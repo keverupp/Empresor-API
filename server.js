@@ -11,7 +11,10 @@ const envSchema = {
     "DATABASE_URL",
     "JWT_SECRET",
     "FRONTEND_URL",
-    "EMAIL_FROM" /* ... outras obrigatórias ... */,
+    "EMAIL_FROM",
+    "CLOUDINARY_CLOUD_NAME",
+    "CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET",
   ],
   properties: {
     NODE_ENV: { type: "string", default: "development" },
@@ -36,7 +39,12 @@ const envSchema = {
     FRONTEND_URL: { type: "string" }, // Ex: http://localhost:8080
 
     // ... outras variáveis do seu .env ...
-    BCRYPT_SALT_ROUNDS: { type: "integer", default: 10 }, // Se quiser controlar via .env para o plugin bcrypt
+    BCRYPT_SALT_ROUNDS: { type: "integer", default: 10 },
+
+    // Configurações do Cloudinary
+    CLOUDINARY_CLOUD_NAME: { type: "string" },
+    CLOUDINARY_API_KEY: { type: "string" },
+    CLOUDINARY_API_SECRET: { type: "string" },
   },
 };
 
