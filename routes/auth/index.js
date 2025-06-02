@@ -7,9 +7,7 @@ const {
   resetPasswordSchema,
   refreshTokenSchema,
   logoutSchema,
-} = require("../../schemas/authSchemas"); // Ajuste o caminho se necessário
-
-// REMOVA: const AuthService = require("../../services/authService");
+} = require("../../schemas/authSchemas");
 
 module.exports = async function (fastify, opts) {
   // Acesse o AuthService através do fastify.services,

@@ -4,7 +4,7 @@ const {
   getUserMeSchema,
   updateUserMeSchema,
   deleteUserMeSchema,
-} = require("../../schemas/userSchemas"); // Ajuste o caminho
+} = require("../../schemas/userSchemas");
 const UserService = require("../../services/userService");
 
 module.exports = async function (fastify, opts) {

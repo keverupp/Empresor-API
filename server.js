@@ -56,6 +56,20 @@ module.exports = async function (fastify, opts) {
     secret: fastify.config.JWT_SECRET,
   });
 
+  await fastify.register(require("@fastify/multipart"), {
+    // addToBody: true, // Se quiser que os campos de texto vão para request.body
+    // attachFieldsToBody: 'keyValues', // Para ter campos de texto em request.body
+    // Defina limites e outras configurações aqui
+    limits: {
+      fieldNameSize: 100, // Max field name size in bytes
+      fieldSize: 1000000, // Max field value size in bytes
+      fields: 10, // Max number of non-file fields
+      fileSize: 5 * 1024 * 1024, // Max file size in bytes (ex: 5MB)
+      files: 1, // Max number of file fields
+      headerPairs: 2000, // Max number of header key=>value pairs
+    },
+  });
+
   // AutoLoad de plugins e rotas
   await fastify.register(AutoLoad, {
     dir: path.join(__dirname, "plugins"),
