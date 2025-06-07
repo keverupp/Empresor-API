@@ -9,7 +9,6 @@ const {
   deleteCompanySchema,
   uploadCompanyLogoSchema,
 } = require("../../schemas/companySchemas");
-const CompanyService = require("../../services/companyService");
 
 module.exports = async function (fastify, opts) {
   const preHandler = fastify.authenticate ? [fastify.authenticate] : [];
