@@ -8,68 +8,55 @@ const {
   updateCompanySchema,
   deleteCompanySchema,
   uploadCompanyLogoSchema,
+  verifyCompanySchema,
+  resendValidationSchema,
 } = require("../../schemas/companySchemas");
 
 module.exports = async function (fastify, opts) {
+  const CompanyService = fastify.services && fastify.services.company;
+  // Hook de autenticação
   const preHandler = fastify.authenticate ? [fastify.authenticate] : [];
   if (!fastify.authenticate) {
     fastify.log.warn(
-      "Hook fastify.authenticate não está definido! As rotas de /companies não serão protegidas por JWT por padrão."
+      "Hook fastify.authenticate não está definido! As rotas de /companies não serão protegidas."
     );
   }
 
+  // Handler de erros genérico para os serviços
   async function handleServiceCall(reply, serviceFn, ...args) {
     try {
       const result = await serviceFn(fastify, ...args);
       return result;
     } catch (error) {
-      // Corrected logging for class instance name
-      const serviceName = CompanyService.constructor.name || "UnknownService";
-      const methodName = serviceFn.name || "unknownMethod"; // .name on a bound function might give "bound methodName"
+      const serviceName = CompanyService.constructor.name || "CompanyService";
+      const methodName = serviceFn.name || "unknownMethod";
       fastify.log.error(
         error,
-        `[CompanyRoutes] Erro no serviço ${serviceName}.${methodName.replace(
-          /^bound\s*/,
-          ""
-        )}`
+        `[CompanyRoutes] Erro no serviço ${serviceName}.${methodName}`
       );
-
       const statusCode = error.statusCode || 500;
-      let message = error.message || "Ocorreu um erro inesperado.";
-      let errorCode =
+      const errorCode =
         error.code ||
         (statusCode === 500 ? "InternalServerError" : "BadRequest");
-
-      if (
-        error.name === "SequelizeUniqueConstraintError" ||
-        (error.message && error.message.includes("UNIQUE constraint failed"))
-      ) {
-        message = `Conflito: ${
-          error.errors
-            ? error.errors[0].message
-            : "Já existe um registro com os dados fornecidos."
-        }`;
-      }
-
-      reply.code(statusCode).send({ statusCode, error: errorCode, message });
+      reply
+        .code(statusCode)
+        .send({ statusCode, error: errorCode, message: error.message });
       return null;
     }
   }
+
+  // --- ROTAS EXISTENTES (sem alteração) ---
 
   // POST /api/companies - Criar nova empresa
   fastify.post(
     "/",
     { schema: createCompanySchema, preHandler },
     async (request, reply) => {
-      const companyData = request.body;
-      const userId = request.user.userId;
-
-      // createCompany does not use 'this.method' internally in the provided service, but binding is a good practice if it might in the future.
       const company = await handleServiceCall(
         reply,
-        CompanyService.createCompany.bind(CompanyService), // Bind context
-        userId,
-        companyData
+        CompanyService.createCompany.bind(CompanyService),
+        request.user.userId,
+        request.body
       );
       if (company) {
         reply.code(201).send(company);
@@ -82,15 +69,11 @@ module.exports = async function (fastify, opts) {
     "/",
     { schema: getCompaniesSchema, preHandler },
     async (request, reply) => {
-      const userId = request.user.userId;
-      const queryParams = request.query;
-
-      // listCompanies does not use 'this.method' internally.
       const result = await handleServiceCall(
         reply,
-        CompanyService.listCompanies.bind(CompanyService), // Bind context
-        userId,
-        queryParams
+        CompanyService.listCompanies.bind(CompanyService),
+        request.user.userId,
+        request.query
       );
       if (result) {
         reply.send(result);
@@ -103,15 +86,11 @@ module.exports = async function (fastify, opts) {
     "/:id",
     { schema: getCompanyByIdSchema, preHandler },
     async (request, reply) => {
-      const userId = request.user.userId;
-      const companyId = request.params.id;
-
-      // getCompanyById does not use 'this.method' internally.
       const company = await handleServiceCall(
         reply,
-        CompanyService.getCompanyById.bind(CompanyService), // Bind context
-        userId,
-        companyId
+        CompanyService.getCompanyById.bind(CompanyService),
+        request.user.userId,
+        request.params.id
       );
       if (company) {
         reply.send(company);
@@ -124,17 +103,12 @@ module.exports = async function (fastify, opts) {
     "/:id",
     { schema: updateCompanySchema, preHandler },
     async (request, reply) => {
-      const userId = request.user.userId;
-      const companyId = request.params.id;
-      const updateData = request.body;
-
-      // updateCompany *uses* this.getCompanyById
       const updatedCompany = await handleServiceCall(
         reply,
-        CompanyService.updateCompany.bind(CompanyService), // Bind context
-        userId,
-        companyId,
-        updateData
+        CompanyService.updateCompany.bind(CompanyService),
+        request.user.userId,
+        request.params.id,
+        request.body
       );
       if (updatedCompany) {
         reply.send(updatedCompany);
@@ -147,15 +121,11 @@ module.exports = async function (fastify, opts) {
     "/:id",
     { schema: deleteCompanySchema, preHandler },
     async (request, reply) => {
-      const userId = request.user.userId;
-      const companyId = request.params.id;
-
-      // deleteCompany *uses* this.getCompanyById
       const result = await handleServiceCall(
         reply,
-        CompanyService.deleteCompany.bind(CompanyService), // Bind context
-        userId,
-        companyId
+        CompanyService.deleteCompany.bind(CompanyService),
+        request.user.userId,
+        request.params.id
       );
       if (result) {
         reply.send(result);
@@ -170,26 +140,61 @@ module.exports = async function (fastify, opts) {
     async (request, reply) => {
       const data = await request.file();
       if (!data || !data.file) {
-        reply.code(400).send({
-          statusCode: 400,
-          error: "BadRequest",
-          message: "Nenhum arquivo de logo enviado ou formato inválido.",
-        });
-        return;
+        return reply
+          .code(400)
+          .send({ message: "Nenhum arquivo de logo enviado." });
       }
-
-      const userId = request.user.userId;
-      const companyId = request.params.id;
-
-      // uploadCompanyLogo *uses* this.getCompanyById
       const result = await handleServiceCall(
         reply,
-        CompanyService.uploadCompanyLogo.bind(CompanyService), // Bind context
-        userId,
-        companyId,
+        CompanyService.uploadCompanyLogo.bind(CompanyService),
+        request.user.userId,
+        request.params.id,
         data
       );
+      if (result) {
+        reply.send(result);
+      }
+    }
+  );
 
+  // --- NOVAS ROTAS DE VALIDAÇÃO ---
+
+  /**
+   * ROTA DE VERIFICAÇÃO DE CÓDIGO
+   * Ativa uma empresa que está com status 'pending_validation'.
+   */
+  fastify.post(
+    "/:id/verify",
+    { schema: verifyCompanySchema, preHandler },
+    async (request, reply) => {
+      const { validationCode } = request.body;
+      const activatedCompany = await handleServiceCall(
+        reply,
+        CompanyService.verifyCompany.bind(CompanyService),
+        request.user.userId,
+        request.params.id,
+        validationCode
+      );
+      if (activatedCompany) {
+        reply.send(activatedCompany);
+      }
+    }
+  );
+
+  /**
+   * ROTA DE REENVIO DE CÓDIGO
+   * Gera e envia um novo código de verificação para uma empresa pendente.
+   */
+  fastify.post(
+    "/:id/resend-validation",
+    { schema: resendValidationSchema, preHandler },
+    async (request, reply) => {
+      const result = await handleServiceCall(
+        reply,
+        CompanyService.resendValidationEmail.bind(CompanyService),
+        request.user.userId,
+        request.params.id
+      );
       if (result) {
         reply.send(result);
       }

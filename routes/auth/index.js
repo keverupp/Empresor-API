@@ -20,9 +20,6 @@ module.exports = async function (fastify, opts) {
     fastify.log.error(
       "[AuthRoutes] AuthService não foi carregado! Verifique o plugin 'loadServices.js' e se o arquivo 'services/authService.js' existe e exporta corretamente."
     );
-    // Em um cenário crítico, você poderia lançar um erro aqui para impedir o registro das rotas:
-    // throw new Error('AuthService é essencial e não foi carregado, as rotas de autenticação não podem ser registradas.');
-    // Por enquanto, as chamadas abaixo falharão se AuthService for undefined.
   }
 
   // Helper handleServiceCall (como você definiu, adaptado para verificar AuthService)

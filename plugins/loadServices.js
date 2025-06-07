@@ -2,7 +2,7 @@
 
 const fp = require("fastify-plugin");
 const path = require("node:path");
-const fs = require("node:fs"); // Usaremos a versão síncrona para simplicidade no boot
+const fs = require("node:fs");
 
 async function serviceLoaderPlugin(fastify, opts) {
   const services = {};
@@ -54,6 +54,4 @@ async function serviceLoaderPlugin(fastify, opts) {
 
 module.exports = fp(serviceLoaderPlugin, {
   name: "service-loader",
-  // Adicione dependências se este plugin depender de outros (ex: 'fastify.config' via @fastify/env)
-  // dependencies: []
 });

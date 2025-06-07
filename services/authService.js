@@ -1,6 +1,8 @@
 "use strict";
 
-const { getPasswordResetEmailHTML } = require("../utils/emailTemplates");
+const {
+  getPasswordResetEmailHTML,
+} = require("../utils/emailResetPasswordTemplate.js");
 
 /**
  * Helper interno para gerar tokens de acesso e atualização.

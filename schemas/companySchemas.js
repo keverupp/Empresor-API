@@ -123,6 +123,18 @@ const S_COMPANY_RESPONSE = {
   properties: companyProperties,
 };
 
+const S_COMPANY_VERIFY_PAYLOAD = {
+  $id: "CompanyVerifyPayload",
+  type: "object",
+  properties: {
+    validationCode: {
+      type: "string",
+      description: "Código de 6 dígitos recebido por e-mail.",
+    },
+  },
+  required: ["validationCode"],
+};
+
 // Schema for creating a company (request body)
 const S_COMPANY_CREATE_PAYLOAD = {
   $id: "CompanyCreatePayload",
@@ -350,13 +362,54 @@ const uploadCompanyLogoSchema = {
   },
 };
 
+// POST /companies/:id/verify
+const verifyCompanySchema = {
+  description:
+    "Verifica e ativa uma empresa usando o código enviado por e-mail.",
+  tags: ["Empresas"],
+  summary: "Verificar e Ativar Empresa",
+  security: [{ bearerAuth: [] }],
+  params: S_PARAMS_WITH_ID,
+  body: { $ref: "CompanyVerifyPayload#" },
+  response: {
+    200: {
+      description: "Empresa ativada com sucesso.",
+      $ref: "CompanyResponse#",
+    },
+    400: { $ref: "ErrorResponse#" }, // Código inválido/expirado
+    401: { $ref: "ErrorResponse#" },
+    403: { $ref: "ErrorResponse#" },
+    404: { $ref: "ErrorResponse#" },
+    409: { $ref: "ErrorResponse#" }, // Já ativa
+    500: { $ref: "ErrorResponse#" },
+  },
+};
+
+// POST /companies/:id/resend-validation
+const resendValidationSchema = {
+  description:
+    "Reenvia o e-mail com o código de verificação para uma empresa com status pendente.",
+  tags: ["Empresas"],
+  summary: "Reenviar Código de Verificação",
+  security: [{ bearerAuth: [] }],
+  params: S_PARAMS_WITH_ID, // Reutiliza o schema de params com ID
+  response: {
+    200: { $ref: "SuccessMessage#" }, // Ex: { message: "E-mail de verificação reenviado com sucesso." }
+    401: { $ref: "ErrorResponse#" }, // Unauthorized
+    403: { $ref: "ErrorResponse#" }, // Forbidden
+    404: { $ref: "ErrorResponse#" }, // Not Found
+    409: { $ref: "ErrorResponse#" }, // Conflict
+    500: { $ref: "ErrorResponse#" },
+  },
+};
+
 module.exports = {
   sharedSchemas: [
     S_COMPANY_RESPONSE,
     S_COMPANY_CREATE_PAYLOAD,
     S_COMPANY_UPDATE_PAYLOAD,
     S_COMPANY_LIST_QUERYSTRING,
-    // S_PARAMS_WITH_ID is simple enough not to need global registration unless widely reused by $ref
+    S_COMPANY_VERIFY_PAYLOAD,
   ],
   createCompanySchema,
   getCompaniesSchema,
@@ -364,4 +417,6 @@ module.exports = {
   updateCompanySchema,
   deleteCompanySchema,
   uploadCompanyLogoSchema,
+  verifyCompanySchema,
+  resendValidationSchema,
 };

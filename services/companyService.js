@@ -1,41 +1,102 @@
 "use strict";
 
 const cloudinary = require("cloudinary").v2;
+const {
+  getCompanyVerificationEmailHTML,
+} = require("../utils/verificationEmailTemplate");
 
 class CompanyService {
-  constructor() {
-    // A configuração do Cloudinary foi movida para dentro do método uploadCompanyLogo
-    // para garantir que `fastify.config` esteja acessível.
-    // Idealmente, configure uma vez no bootstrap da aplicação.
+  constructor() {}
+
+  /**
+   * Método auxiliar privado para gerar e enviar o e-mail de verificação.
+   * Centraliza a lógica de envio para ser usada na criação e no reenvio.
+   * @private
+   */
+  async _sendVerificationEmail(fastify, company) {
+    // Verifica se o plugin de e-mail está configurado e disponível.
+    if (!fastify.mailer) {
+      fastify.log.error(
+        "Serviço de e-mail (fastify.mailer) não está disponível. Verifique o plugin e as configurações .env."
+      );
+      throw new Error(
+        "Não foi possível enviar o e-mail de verificação pois o serviço de e-mail não está configurado."
+      );
+    }
+
+    // Garante que a empresa tenha um e-mail para onde enviar.
+    if (!company.email) {
+      throw new Error(
+        "A empresa não possui um e-mail cadastrado para enviar a verificação."
+      );
+    }
+
+    // Gera um novo código de 6 dígitos e uma data de expiração de 15 minutos.
+    const validationCode = fastify.cryptoUtils.generateNumericCode(6);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+
+    // Salva o novo código e a data de expiração no banco de dados.
+    await fastify.knex("companies").where("id", company.id).update({
+      validation_code: validationCode,
+      validation_code_expires_at: expiresAt,
+    });
+
+    // Gera o HTML do e-mail usando o template estilizado.
+    const emailHtml = getCompanyVerificationEmailHTML({
+      companyName: company.name,
+      verificationCode: validationCode,
+      appName: fastify.config.EMAIL_FROM_NAME,
+      logoUrl: fastify.config.COMPANY_LOGO_URL,
+      primaryColor: fastify.config.EMAIL_PRIMARY_COLOR,
+      codeExpiryMinutes: 15,
+    });
+
+    // Define as opções do e-mail para o Nodemailer.
+    const mailOptions = {
+      from: fastify.config.EMAIL_FROM,
+      to: company.email,
+      subject: `[${validationCode}] é o seu código de verificação para ${fastify.config.EMAIL_FROM_NAME}`,
+      html: emailHtml,
+    };
+
+    // Envia o e-mail.
+    try {
+      await fastify.mailer.sendMail(mailOptions);
+      fastify.log.info(
+        `E-mail de verificação enviado com sucesso para ${company.email}`
+      );
+    } catch (error) {
+      fastify.log.error(
+        error,
+        "Falha ao enviar e-mail de verificação via fastify.mailer"
+      );
+      throw new Error("Ocorreu uma falha ao enviar o e-mail de verificação.");
+    }
   }
 
+  /**
+   * Cria uma nova empresa. Se um CNPJ for fornecido, a empresa
+   * começa com status 'pending_validation' e um e-mail é enviado.
+   */
   async createCompany(fastify, userId, companyData) {
-    const {
-      name,
-      legal_name,
-      document_number,
-      email,
-      phone_number,
-      ...addressAndPrefs
-    } = companyData;
-
+    const { document_number } = companyData;
     const companyToInsert = {
       owner_id: userId,
-      name,
-      legal_name,
-      document_number,
-      email,
-      phone_number,
-      address_street: addressAndPrefs.address_street,
-      address_number: addressAndPrefs.address_number,
-      address_complement: addressAndPrefs.address_complement,
-      address_neighborhood: addressAndPrefs.address_neighborhood,
-      address_city: addressAndPrefs.address_city,
-      address_state: addressAndPrefs.address_state,
-      address_zip_code: addressAndPrefs.address_zip_code,
-      address_country: addressAndPrefs.address_country || "BR",
-      pdf_preferences: addressAndPrefs.pdf_preferences || {},
-      status: addressAndPrefs.status || "active",
+      name: companyData.name,
+      legal_name: companyData.legal_name,
+      document_number: document_number,
+      email: companyData.email,
+      phone_number: companyData.phone_number,
+      address_street: companyData.address_street,
+      address_number: companyData.address_number,
+      address_complement: companyData.address_complement,
+      address_neighborhood: companyData.address_neighborhood,
+      address_city: companyData.address_city,
+      address_state: companyData.address_state,
+      address_zip_code: companyData.address_zip_code,
+      address_country: companyData.address_country || "BR",
+      pdf_preferences: companyData.pdf_preferences || {},
+      status: document_number ? "pending_validation" : "active",
     };
 
     try {
@@ -43,23 +104,84 @@ class CompanyService {
         .knex("companies")
         .insert(companyToInsert)
         .returning("*");
+
+      if (createdCompany.status === "pending_validation") {
+        await this._sendVerificationEmail(fastify, createdCompany);
+      }
+
       return createdCompany;
     } catch (error) {
       fastify.log.error(error, "Erro ao criar empresa no banco de dados");
-      if (
-        error.code === "SQLITE_CONSTRAINT" ||
-        error.message.includes("UNIQUE constraint failed") ||
-        error.message.includes("duplicate key value violates unique constraint")
-      ) {
+
+      // *** CORREÇÃO APLICADA AQUI ***
+      // Verifica pelo código de erro do PostgreSQL (23505) em vez da mensagem de texto.
+      if (error.code === "23505") {
         const customError = new Error(
           "Falha ao criar empresa: um registro com o número de documento fornecido já existe."
         );
-        customError.statusCode = 409;
+        customError.statusCode = 409; // 409 Conflict
         customError.code = "Conflict";
         throw customError;
       }
+
+      // Se for qualquer outro erro, lança o erro genérico.
       throw new Error("Não foi possível criar a empresa.");
     }
+  }
+
+  /**
+   * Verifica o código da empresa e, se for válido, ativa o status.
+   */
+  async verifyCompany(fastify, userId, companyId, validationCode) {
+    const company = await this.getCompanyById(fastify, userId, companyId);
+
+    if (company.status === "active") {
+      const error = new Error("Esta empresa já foi validada.");
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const isCodeValid = company.validation_code === validationCode;
+    const isExpired = new Date() > new Date(company.validation_code_expires_at);
+
+    if (!isCodeValid || isExpired) {
+      const error = new Error("Código de verificação inválido ou expirado.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const [activatedCompany] = await fastify
+      .knex("companies")
+      .where("id", companyId)
+      .update({
+        status: "active",
+        validation_code: null,
+        validation_code_expires_at: null,
+      })
+      .returning("*");
+
+    return activatedCompany;
+  }
+
+  /**
+   * Reenvia um novo código de verificação para uma empresa com status pendente.
+   */
+  async resendValidationEmail(fastify, userId, companyId) {
+    // Reutiliza getCompanyById para buscar a empresa e checar a permissão.
+    const company = await this.getCompanyById(fastify, userId, companyId);
+
+    // Verifica se a empresa realmente precisa de validação.
+    if (company.status !== "pending_validation") {
+      const error = new Error("Esta empresa não está aguardando validação.");
+      error.statusCode = 409;
+      error.code = "Conflict";
+      throw error;
+    }
+
+    // Reutiliza a lógica de envio de e-mail.
+    await this._sendVerificationEmail(fastify, company);
+
+    return { message: "E-mail de verificação reenviado com sucesso." };
   }
 
   async listCompanies(fastify, userId, queryParams) {
