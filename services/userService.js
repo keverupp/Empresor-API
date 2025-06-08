@@ -15,8 +15,9 @@ async function getUserProfile(fastify, userId) {
     throw error;
   }
 
-  // Buscar plano ativo
-  const activeSubscription = await knex("user_plan_subscriptions as ups")
+  // --- CORREÇÃO AQUI ---
+  // Construa a query em uma variável antes de executar com 'await'
+  const activeSubscriptionQuery = knex("user_plan_subscriptions as ups")
     .join("plans as p", "ups.plan_id", "p.id")
     .select(
       "p.name as plan_name",
@@ -25,10 +26,12 @@ async function getUserProfile(fastify, userId) {
       "ups.current_period_ends_at"
     )
     .where("ups.user_id", userId)
-    // Adicione lógica para pegar o mais relevante se houver múltiplos (ex: o mais recente, ou com status 'active'/'trialing')
-    .andWhereIn("ups.status", ["active", "trialing", "free"]) // Considera estes como "ativos" para exibição
+    .whereIn("ups.status", ["active", "trialing", "free"])
     .orderBy("ups.created_at", "desc")
     .first();
+
+  // Execute a query construída com 'await' no final
+  const activeSubscription = await activeSubscriptionQuery;
 
   user.active_plan = activeSubscription || null;
 
@@ -136,8 +139,14 @@ async function deleteUserAccount(fastify, userId) {
       updated_at: knex.fn.now(),
     });
 
-  // Considere o que fazer com user_plan_subscriptions: cancelar?
-  // await knex('user_plan_subscriptions').where({ user_id: userId }).update({ status: 'canceled', ended_at: knex.fn.now() });
+  await knex("user_plan_subscriptions")
+    .where({ user_id: userId })
+    .whereIn("status", ["active", "trialing"])
+    .update({
+      status: "canceled",
+      updated_at: knex.fn.now(),
+      ended_at: knex.fn.now(),
+    });
 
   log.info(
     `[UserService] Conta do usuário ${userId} desativada (soft delete).`

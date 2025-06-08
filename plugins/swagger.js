@@ -32,6 +32,15 @@ async function swaggerPlugin(fastify, options) {
         },
       },
     },
+    transform: ({ schema, url }) => {
+      // Esta função intercepta cada rota antes de ser adicionada à documentação.
+      // Usamos uma expressão regular para substituir /_parametro por /:parametro
+      // Ex: /api/companies/_companyId/shares -> /api/companies/:companyId/shares
+      // A regex foi ajustada para capturar tanto _param quanto [param]
+      const newUrl = url.replace(/\/([\[_])(\w+)([\]_])/, "/:$2");
+
+      return { schema, url: newUrl };
+    },
   });
 
   // Registrar o Swagger UI

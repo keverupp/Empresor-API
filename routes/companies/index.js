@@ -181,10 +181,6 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  /**
-   * ROTA DE REENVIO DE CÓDIGO
-   * Gera e envia um novo código de verificação para uma empresa pendente.
-   */
   fastify.post(
     "/:id/resend-validation",
     { schema: resendValidationSchema, preHandler },
@@ -200,4 +196,6 @@ module.exports = async function (fastify, opts) {
       }
     }
   );
+
+  fastify.register(require("./shares"));
 };
