@@ -198,4 +198,5 @@ module.exports = async function (fastify, opts) {
   );
 
   fastify.register(require("./shares"));
+  fastify.register(require("./clients"));
 };

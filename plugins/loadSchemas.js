@@ -4,91 +4,72 @@ const fp = require("fastify-plugin");
 const fs = require("fs");
 const path = require("path");
 
-module.exports = fp(
-  async function (fastify, opts) {
-    const schemasPath = opts.schemasPath || path.join(__dirname, "../schemas");
-    const allSharedSchemas = [];
-
-    // Função para carregar schemas recursivamente
-    function loadSchemasFromDirectory(dirPath) {
-      if (!fs.existsSync(dirPath)) {
-        fastify.log.warn(`Diretório de schemas não encontrado: ${dirPath}`);
-        return;
-      }
-
-      const files = fs.readdirSync(dirPath);
-
-      files.forEach((file) => {
-        const filePath = path.join(dirPath, file);
-        const stat = fs.statSync(filePath);
-
-        if (stat.isDirectory()) {
-          // Recursivamente carrega schemas de subdiretórios
-          loadSchemasFromDirectory(filePath);
-        } else if (file.endsWith(".js") && !file.startsWith(".")) {
-          try {
-            const schemaModule = require(filePath);
-
-            // Verifica se o módulo tem sharedSchemas
-            if (
-              schemaModule.sharedSchemas &&
-              Array.isArray(schemaModule.sharedSchemas)
-            ) {
-              allSharedSchemas.push(...schemaModule.sharedSchemas);
-              fastify.log.debug(`Schemas carregados de: ${filePath}`);
-            }
-          } catch (error) {
-            fastify.log.error({
-              msg: `Erro ao carregar schema do arquivo: ${filePath}`,
-              error: error.message,
-            });
-          }
-        }
-      });
-    }
-
-    // Carrega todos os schemas da pasta
-    loadSchemasFromDirectory(schemasPath);
-
-    // Registra todos os schemas encontrados
-    let schemasRegistered = 0;
-    let schemasSkipped = 0;
-
-    allSharedSchemas.forEach((schema) => {
-      if (schema.$id) {
-        if (!fastify.getSchema(schema.$id)) {
-          fastify.addSchema(schema);
-          schemasRegistered++;
-        } else {
-          fastify.log.debug(`Schema ${schema.$id} já existe, pulando...`);
-          schemasSkipped++;
-        }
-      } else {
-        fastify.log.warn({
-          msg: "Schema compartilhado sem $id não pode ser adicionado.",
-          schema,
-        });
-        schemasSkipped++;
-      }
-    });
-
-    // Log do resultado
-    if (schemasRegistered > 0) {
-      fastify.log.info(
-        `${schemasRegistered} schemas compartilhados carregados automaticamente.`
-      );
-    }
-
-    if (schemasSkipped > 0) {
-      fastify.log.info(`${schemasSkipped} schemas foram pulados.`);
-    }
-
-    if (schemasRegistered === 0 && schemasSkipped === 0) {
-      fastify.log.info("Nenhum schema compartilhado encontrado para carregar.");
-    }
-  },
-  {
-    name: "load-schemas-autoload",
-    // Se este plugin depender de outros, adicione aqui. Ex: dependencies: ['@fastify/env']
+async function schemasAutoload(fastify, opts) {
+  // 1. Decora o objeto `fastify` para garantir que `schemas` exista.
+  // Usar 'decorate' é a forma correta de adicionar novas propriedades ao Fastify.
+  if (!fastify.hasDecorator("schemas")) {
+    fastify.decorate("schemas", {});
   }
-);
+
+  const schemasPath = opts.schemasPath || path.join(__dirname, "../schemas");
+
+  // Função interna para carregar os schemas
+  function loadAndRegister(dir) {
+    // Verifica se o diretório existe antes de tentar ler
+    if (!fs.existsSync(dir)) {
+      fastify.log.warn(`Diretório de schemas não encontrado, pulando: ${dir}`);
+      return;
+    }
+
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+
+      if (stat.isDirectory()) {
+        loadAndRegister(fullPath); // Carrega recursivamente
+      } else if (file.endsWith(".js")) {
+        try {
+          const schemaModule = require(fullPath);
+
+          // Itera sobre tudo que o módulo exporta
+          for (const schemaName in schemaModule) {
+            const schemaObject = schemaModule[schemaName];
+
+            // Anexa o schema ao decorator para acesso nas rotas (ex: fastify.schemas.createClientSchema)
+            fastify.schemas[schemaName] = schemaObject;
+
+            // Se for um schema compartilhável com $id, adiciona ao store global do Fastify para $ref
+            if (schemaName === "sharedSchemas" && Array.isArray(schemaObject)) {
+              for (const shared of schemaObject) {
+                if (shared.$id && !fastify.getSchema(shared.$id)) {
+                  fastify.addSchema(shared);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          fastify.log.error(`Falha ao carregar o arquivo de schema: ${file}`);
+          // Lança o erro para interromper a inicialização se um schema não puder ser carregado
+          throw err;
+        }
+      }
+    }
+  }
+
+  try {
+    loadAndRegister(schemasPath);
+    fastify.log.info("Plugin de schemas carregado com sucesso.");
+  } catch (err) {
+    fastify.log.error(
+      err,
+      "Ocorreu um erro crítico durante o carregamento dos schemas."
+    );
+    // Propaga o erro para que o Fastify pare a inicialização
+    throw err;
+  }
+}
+
+module.exports = fp(schemasAutoload, {
+  name: "schemas-autoload",
+});
