@@ -26,7 +26,7 @@ class QuoteService {
       currency = "BRL",
     } = quoteData;
 
-    // Verifica se o cliente pertence à empresa
+    // 1. Validação do Cliente
     const client = await knex("clients")
       .where({ id: client_id, company_id: companyId })
       .first();
@@ -38,7 +38,7 @@ class QuoteService {
       throw error;
     }
 
-    // Verifica se o número do orçamento já existe na empresa
+    // 2. Validação de Orçamento Duplicado
     const existingQuote = await knex("quotes")
       .where({ company_id: companyId, quote_number })
       .first();
@@ -52,7 +52,7 @@ class QuoteService {
       throw error;
     }
 
-    // Calcula totais
+    // 3. Cálculo dos totais (esta função já está correta)
     const totals = this._calculateTotals(
       items,
       discount_type,
@@ -63,7 +63,7 @@ class QuoteService {
     const transaction = await knex.transaction();
 
     try {
-      // Cria o orçamento com tratamento robusto para campos opcionais
+      // 4. Inserção no Banco de Dados com a Lógica Corrigida
       const [quote] = await transaction("quotes")
         .insert({
           company_id: companyId,
@@ -78,21 +78,18 @@ class QuoteService {
           terms_and_conditions_content,
           subtotal_cents: totals.subtotal,
 
-          // Tratamento correto para desconto
+          // --- LÓGICA CORRIGIDA E FINAL ---
           discount_type: discount_type || null,
-          discount_value_cents: discount_type
-            ? discount_value_cents || 0
-            : null,
-
-          // Tratamento correto para imposto
+          // Usa o valor do desconto JÁ CALCULADO pela função _calculateTotals
+          discount_value_cents: totals.discount,
           tax_amount_cents: tax_amount_cents ?? null,
+          // --- FIM DA CORREÇÃO ---
 
           total_amount_cents: totals.total,
           currency,
         })
         .returning("*");
 
-      // Cria os itens do orçamento
       const quoteItems = items.map((item, index) => ({
         quote_id: quote.id,
         product_id: item.product_id || null,
@@ -103,11 +100,8 @@ class QuoteService {
         item_order: index + 1,
       }));
 
-      // Insere os itens do orçamento (constante 'insertedItems' removida)
-      await transaction("quote_items").insert(quoteItems).returning("*");
-
+      await transaction("quote_items").insert(quoteItems);
       await transaction.commit();
-
       log.info(`Orçamento #${quote.id} criado para a empresa #${companyId}`);
 
       // Retorna o orçamento completo
@@ -259,6 +253,14 @@ class QuoteService {
    * @param {number} quoteId
    * @returns {Promise<object>}
    */
+
+  /**
+   * Busca um orçamento específico por ID com todos os detalhes
+   * @param {import('fastify').FastifyInstance} fastify
+   * @param {number} companyId
+   * @param {number} quoteId
+   * @returns {Promise<object>}
+   */
   async getQuoteById(fastify, companyId, quoteId) {
     const { knex } = fastify;
 
@@ -290,13 +292,33 @@ class QuoteService {
       throw error;
     }
 
+    // --- INÍCIO DA CORREÇÃO DEFINITIVA ---
+    // Garante que todos os valores monetários sejam retornados como inteiros.
+    // Drivers de banco de dados podem retornar tipos NUMERIC/DECIMAL como strings.
+    const parsedQuote = {
+      ...quote,
+      subtotal_cents: parseInt(quote.subtotal_cents, 10),
+      // Trata os campos que podem ser nulos antes de fazer o parse
+      discount_value_cents:
+        quote.discount_value_cents === null
+          ? null
+          : parseInt(quote.discount_value_cents, 10),
+      tax_amount_cents:
+        quote.tax_amount_cents === null
+          ? null
+          : parseInt(quote.tax_amount_cents, 10),
+      total_amount_cents: parseInt(quote.total_amount_cents, 10),
+    };
+    // --- FIM DA CORREÇÃO DEFINITIVA ---
+
     // Busca os itens do orçamento
     const items = await knex("quote_items")
       .where({ quote_id: quoteId })
       .orderBy("item_order", "asc");
 
+    // Retorna o objeto com os valores devidamente convertidos
     return {
-      ...quote,
+      ...parsedQuote,
       items,
     };
   }
