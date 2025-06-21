@@ -157,12 +157,9 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // --- NOVAS ROTAS DE VALIDAÇÃO ---
+  // --- ROTAS DE VALIDAÇÃO ---
 
-  /**
-   * ROTA DE VERIFICAÇÃO DE CÓDIGO
-   * Ativa uma empresa que está com status 'pending_validation'.
-   */
+  // POST /api/companies/:id/verify - Verificar código da empresa
   fastify.post(
     "/:id/verify",
     { schema: verifyCompanySchema, preHandler },
@@ -181,6 +178,7 @@ module.exports = async function (fastify, opts) {
     }
   );
 
+  // POST /api/companies/:id/resend-validation - Reenviar código de validação
   fastify.post(
     "/:id/resend-validation",
     { schema: resendValidationSchema, preHandler },
@@ -197,6 +195,14 @@ module.exports = async function (fastify, opts) {
     }
   );
 
+  // --- REGISTRO DE SUB-ROTAS ---
+
+  // Registra as rotas de compartilhamento
   fastify.register(require("./shares"));
+
+  // Registra as rotas de clientes
   fastify.register(require("./clients"));
+
+  // Registra as rotas de produtos
+  fastify.register(require("./products"));
 };

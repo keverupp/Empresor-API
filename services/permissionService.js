@@ -5,57 +5,125 @@ class PermissionService {
   async getUserPlan(fastify, userId) {
     const { knex } = fastify;
 
-    // --- CORREÇÃO AQUI ---
-    // Construa a query em uma variável antes de executar com 'await'
+    // Busca o plano ativo do usuário com todas as informações
     const planDetailsQuery = knex("user_plan_subscriptions as ups")
       .join("plans as p", "ups.plan_id", "p.id")
-      .select("p.*")
+      .select("p.*") // Pega todas as colunas da tabela plans
       .where("ups.user_id", userId)
       .whereIn("ups.status", ["active", "trialing", "free"])
       .orderBy("ups.created_at", "desc")
       .first();
 
-    // Execute a query construída com 'await' no final
     const planDetails = await planDetailsQuery;
 
-    return planDetails || null;
+    // Se não encontrou plano, retorna null
+    if (!planDetails) {
+      return null;
+    }
+
+    // ⚠️ CORREÇÃO CRÍTICA: Parse do JSONB features
+    // O PostgreSQL pode retornar o JSONB como string ou objeto dependendo do driver
+    let features = planDetails.features;
+
+    if (typeof features === "string") {
+      try {
+        features = JSON.parse(features);
+      } catch (error) {
+        fastify.log.error(
+          `Erro ao fazer parse do features do plano ${planDetails.id}:`,
+          error
+        );
+        features = {}; // Fallback para objeto vazio
+      }
+    }
+
+    // Garante que features é um objeto
+    if (!features || typeof features !== "object") {
+      features = {};
+    }
+
+    // Retorna o plano com features já parseado
+    return {
+      ...planDetails,
+      features: features,
+    };
   }
 
   /**
    * Verifica se o plano de um usuário permite uma determinada ação.
    * @param {object} userPlan - O objeto do plano obtido de `getUserPlan`.
-   * @param {string} permissionFlag - O nome da coluna de permissão booleana na tabela 'plans'.
+   * @param {string} permissionFlag - O nome da permissão no objeto features.
    * @returns {boolean}
    */
   checkPermission(userPlan, permissionFlag) {
-    // Se não há plano ou a flag não existe/é falsa, a permissão é negada.
-    if (!userPlan || !userPlan[permissionFlag]) {
+    // Se não há plano, a permissão é negada
+    if (!userPlan) {
       return false;
     }
-    return true;
+
+    // Garante que features existe e é um objeto
+    const features = userPlan.features || {};
+
+    // Verifica se a permissão específica existe e é verdadeira
+    const hasPermission = Boolean(features[permissionFlag]);
+
+    return hasPermission;
   }
 
   /**
    * Verifica se um usuário excedeu um limite numérico de seu plano.
    * @param {object} userPlan - O objeto do plano obtido de `getUserPlan`.
-   * @param {string} limitName - O nome da coluna de limite na tabela 'plans'.
+   * @param {string} limitName - O nome do limite no objeto features.
    * @param {number} currentValue - O valor atual que está sendo verificado contra o limite.
    * @returns {boolean} - Retorna `true` se o limite foi excedido, `false` caso contrário.
    */
   checkLimit(userPlan, limitName, currentValue) {
-    // Se não há plano, consideramos o limite como 0 (o mais restritivo).
-    const limit = userPlan ? userPlan[limitName] : 0;
-
-    // Se o limite for null ou undefined, consideramos como ilimitado.
-    if (limit === null || limit === undefined) {
-      return false; // Não excedeu o limite
+    // Se não há plano, consideramos o limite como 0 (o mais restritivo)
+    if (!userPlan) {
+      return true; // Sem plano = limite excedido
     }
 
-    if (currentValue >= limit) {
-      return true; // Excedeu o limite
+    // Garante que features existe e é um objeto
+    const features = userPlan.features || {};
+
+    // Obtém o limite específico
+    const limit = features[limitName];
+
+    // Se o limite for null, undefined ou -1, consideramos como ilimitado
+    if (limit === null || limit === undefined || limit === -1) {
+      return false; // Não excedeu o limite (ilimitado)
     }
 
-    return false; // Não excedeu o limite
+    // Converte para número para garantir comparação correta
+    const numericLimit = Number(limit);
+    const numericCurrent = Number(currentValue);
+
+    // Se não conseguir converter, considera limite excedido por segurança
+    if (isNaN(numericLimit) || isNaN(numericCurrent)) {
+      return true;
+    }
+
+    // Verifica se excedeu o limite
+    return numericCurrent >= numericLimit;
+  }
+
+  /**
+   * Método de debug para verificar o conteúdo do plano
+   * @param {object} userPlan
+   * @returns {object}
+   */
+  debugPlan(userPlan) {
+    if (!userPlan) {
+      return { error: "Nenhum plano fornecido" };
+    }
+
+    return {
+      planId: userPlan.id,
+      planName: userPlan.name,
+      features: userPlan.features,
+      featuresType: typeof userPlan.features,
+      featuresKeys: userPlan.features ? Object.keys(userPlan.features) : [],
+    };
   }
 }
 
