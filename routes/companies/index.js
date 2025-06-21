@@ -205,4 +205,7 @@ module.exports = async function (fastify, opts) {
 
   // Registra as rotas de produtos
   fastify.register(require("./products"));
+
+  // Registra as rotas de orçamentos
+  fastify.register(require("./quotes"));
 };
