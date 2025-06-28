@@ -1,6 +1,33 @@
 "use strict";
 
+function mapProductPublicId(product) {
+  if (!product) return null;
+  const { id: _ignored, public_id, ...rest } = product;
+  return { id: public_id, ...rest };
+}
+
 class ProductService {
+  async _resolveCompanyId(knex, identifier) {
+    if (!isNaN(parseInt(identifier))) {
+      return parseInt(identifier);
+    }
+    const row = await knex("companies")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
+
+  async _resolveProductId(knex, identifier) {
+    if (!isNaN(parseInt(identifier))) {
+      return parseInt(identifier);
+    }
+    const row = await knex("products")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
   /**
    * Cria um novo produto para uma empresa
    * @param {import('fastify').FastifyInstance} fastify
@@ -11,12 +38,13 @@ class ProductService {
   async createProduct(fastify, companyId, productData) {
     const { knex, log } = fastify;
     const { sku } = productData;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
 
     // Verifica se já existe um produto com o mesmo SKU na empresa (se SKU foi fornecido)
     if (sku) {
       const existingProduct = await knex("products")
         .where({
-          company_id: companyId,
+          company_id: companyInternalId,
           sku: sku,
         })
         .first();
@@ -35,12 +63,12 @@ class ProductService {
       const [product] = await knex("products")
         .insert({
           ...productData,
-          company_id: companyId,
+          company_id: companyInternalId,
         })
         .returning("*");
 
       log.info(`Produto #${product.id} criado para a empresa #${companyId}`);
-      return product;
+      return mapProductPublicId(product);
     } catch (error) {
       log.error(error, `Erro ao criar produto para a empresa #${companyId}`);
 
@@ -67,16 +95,17 @@ class ProductService {
    */
   async listProducts(fastify, companyId, queryParams = {}) {
     const { knex } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
     const { page = 1, pageSize = 10, name, sku, is_active, unit } = queryParams;
 
     const offset = (page - 1) * pageSize;
 
     // Query principal para buscar produtos
-    let query = knex("products").where({ company_id: companyId });
+    let query = knex("products").where({ company_id: companyInternalId });
 
     // Query para contar total de itens
     let countQuery = knex("products")
-      .where({ company_id: companyId })
+      .where({ company_id: companyInternalId })
       .count("id as total");
 
     // Aplicar filtros se fornecidos
@@ -112,7 +141,7 @@ class ProductService {
       const totalPages = Math.ceil(totalItems / pageSize);
 
       return {
-        data: products,
+        data: products.map(mapProductPublicId),
         pagination: {
           totalItems: parseInt(totalItems),
           totalPages,
@@ -134,11 +163,20 @@ class ProductService {
    * @returns {Promise<object>}
    */
   async getProductById(fastify, companyId, productId) {
+    const companyInternalId = await this._resolveCompanyId(
+      fastify.knex,
+      companyId
+    );
+    const productInternalId = await this._resolveProductId(
+      fastify.knex,
+      productId
+    );
+
     const product = await fastify
       .knex("products")
       .where({
-        id: productId,
-        company_id: companyId,
+        id: productInternalId,
+        company_id: companyInternalId,
       })
       .first();
 
@@ -149,7 +187,7 @@ class ProductService {
       throw error;
     }
 
-    return product;
+    return mapProductPublicId(product);
   }
 
   /**
@@ -163,6 +201,8 @@ class ProductService {
   async updateProduct(fastify, companyId, productId, updateData) {
     const { knex, log } = fastify;
     const { sku } = updateData;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const productInternalId = await this._resolveProductId(knex, productId);
 
     // Verifica se o produto existe
     await this.getProductById(fastify, companyId, productId);
@@ -171,10 +211,10 @@ class ProductService {
     if (sku) {
       const existingProduct = await knex("products")
         .where({
-          company_id: companyId,
-          sku: sku,
+          company_id: companyInternalId,
+        sku: sku,
         })
-        .whereNot({ id: productId })
+        .whereNot({ id: productInternalId })
         .first();
 
       if (existingProduct) {
@@ -190,8 +230,8 @@ class ProductService {
     try {
       const [updatedProduct] = await knex("products")
         .where({
-          id: productId,
-          company_id: companyId,
+          id: productInternalId,
+          company_id: companyInternalId,
         })
         .update(
           {
@@ -202,7 +242,7 @@ class ProductService {
         );
 
       log.info(`Produto #${productId} da empresa #${companyId} atualizado.`);
-      return updatedProduct;
+      return mapProductPublicId(updatedProduct);
     } catch (error) {
       log.error(error, `Erro ao atualizar produto #${productId}`);
 
@@ -229,10 +269,12 @@ class ProductService {
    */
   async deleteProduct(fastify, companyId, productId) {
     const { knex, log } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const productInternalId = await this._resolveProductId(knex, productId);
 
     // Verifica se existem quote_items que referenciam este produto
     const quotesUsingProduct = await knex("quote_items")
-      .where({ product_id: productId })
+      .where({ product_id: productInternalId })
       .first();
 
     if (quotesUsingProduct) {
@@ -246,8 +288,8 @@ class ProductService {
 
     const result = await knex("products")
       .where({
-        id: productId,
-        company_id: companyId,
+        id: productInternalId,
+        company_id: companyInternalId,
       })
       .del();
 
@@ -269,9 +311,13 @@ class ProductService {
    * @returns {Promise<number>}
    */
   async getProductCount(fastify, companyId) {
+    const companyInternalId = await this._resolveCompanyId(
+      fastify.knex,
+      companyId
+    );
     const [{ count }] = await fastify
       .knex("products")
-      .where({ company_id: companyId })
+      .where({ company_id: companyInternalId })
       .count("id as count");
 
     return parseInt(count);
@@ -284,13 +330,18 @@ class ProductService {
    * @returns {Promise<array>}
    */
   async getActiveProducts(fastify, companyId) {
-    return fastify
+    const companyInternalId = await this._resolveCompanyId(
+      fastify.knex,
+      companyId
+    );
+    const products = await fastify
       .knex("products")
       .where({
-        company_id: companyId,
+        company_id: companyInternalId,
         is_active: true,
       })
       .orderBy("name", "asc");
+    return products.map(mapProductPublicId);
   }
 }
 
