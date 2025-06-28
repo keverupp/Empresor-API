@@ -5,15 +5,15 @@
 const S_PARAMS_WITH_ID = {
   type: "object",
   properties: {
-    id: { type: "integer", description: "Company ID" },
+    id: { type: "string", description: "Company ID" },
   },
   required: ["id"],
 };
 
 // Base properties for a company, reflecting the database schema
 const companyProperties = {
-  id: { type: "integer", description: "ID da Empresa" },
-  owner_id: { type: "integer", description: "ID do Usuário Proprietário" },
+  id: { type: "string", description: "ID público da Empresa" },
+  owner_id: { type: "string", description: "ID do Usuário Proprietário" },
   name: {
     type: "string",
     maxLength: 255,
@@ -206,7 +206,7 @@ const S_COMPANY_LIST_QUERYSTRING = {
     name: { type: "string", description: "Filtrar por nome (busca parcial)" },
     status: { type: "string", description: "Filtrar por status" },
     owner_id: {
-      type: "integer",
+      type: "string",
       description: "Filtrar por ID do proprietário",
     },
     document_number: {

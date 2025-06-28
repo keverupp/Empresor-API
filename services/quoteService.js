@@ -1,6 +1,44 @@
 "use strict";
 
+function mapQuotePublicId(quote) {
+  if (!quote) return null;
+  const { id: _ignored, public_id, ...rest } = quote;
+  return { id: public_id, ...rest };
+}
+
 class QuoteService {
+  async _resolveCompanyId(knex, identifier) {
+    if (!isNaN(parseInt(identifier))) {
+      return parseInt(identifier);
+    }
+    const row = await knex("companies")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
+
+  async _resolveClientId(knex, identifier) {
+    if (!isNaN(parseInt(identifier))) {
+      return parseInt(identifier);
+    }
+    const row = await knex("clients")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
+
+  async _resolveQuoteId(knex, identifier) {
+    if (!isNaN(parseInt(identifier))) {
+      return parseInt(identifier);
+    }
+    const row = await knex("quotes")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
   /**
    * Cria um novo orçamento com itens
    * @param {import('fastify').FastifyInstance} fastify
@@ -26,9 +64,12 @@ class QuoteService {
       currency = "BRL",
     } = quoteData;
 
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const clientInternalId = await this._resolveClientId(knex, client_id);
+
     // 1. Validação do Cliente
     const client = await knex("clients")
-      .where({ id: client_id, company_id: companyId })
+      .where({ id: clientInternalId, company_id: companyInternalId })
       .first();
 
     if (!client) {
@@ -40,7 +81,7 @@ class QuoteService {
 
     // 2. Validação de Orçamento Duplicado
     const existingQuote = await knex("quotes")
-      .where({ company_id: companyId, quote_number })
+      .where({ company_id: companyInternalId, quote_number })
       .first();
 
     if (existingQuote) {
@@ -66,8 +107,8 @@ class QuoteService {
       // 4. Inserção no Banco de Dados com a Lógica Corrigida
       const [quote] = await transaction("quotes")
         .insert({
-          company_id: companyId,
-          client_id,
+          company_id: companyInternalId,
+          client_id: clientInternalId,
           created_by_user_id: userId,
           quote_number,
           status: "draft",
@@ -132,6 +173,7 @@ class QuoteService {
    */
   async listQuotes(fastify, companyId, queryParams = {}) {
     const { knex } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
     const {
       page = 1,
       pageSize = 10,
@@ -149,12 +191,12 @@ class QuoteService {
     // Query principal com JOIN para trazer dados do cliente
     let query = knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
-      .where("q.company_id", companyId)
+      .where("q.company_id", companyInternalId)
       .select(
         "q.*",
         knex.raw(`
           json_build_object(
-            'id', c.id,
+            'id', c.public_id,
             'name', c.name,
             'email', c.email,
             'phone_number', c.phone_number,
@@ -165,7 +207,7 @@ class QuoteService {
 
     // Query para contagem
     let countQuery = knex("quotes")
-      .where({ company_id: companyId })
+      .where({ company_id: companyInternalId })
       .count("id as total");
 
     // Aplicar filtros
@@ -175,8 +217,9 @@ class QuoteService {
     }
 
     if (client_id) {
-      query = query.where("q.client_id", client_id);
-      countQuery = countQuery.where("client_id", client_id);
+      const clientInternalId = await this._resolveClientId(knex, client_id);
+      query = query.where("q.client_id", clientInternalId);
+      countQuery = countQuery.where("client_id", clientInternalId);
     }
 
     if (quote_number) {
@@ -224,10 +267,10 @@ class QuoteService {
             .where({ quote_id: quote.id })
             .orderBy("item_order", "asc");
 
-          return {
+          return mapQuotePublicId({
             ...quote,
             items,
-          };
+          });
         })
       );
 
@@ -263,15 +306,17 @@ class QuoteService {
    */
   async getQuoteById(fastify, companyId, quoteId) {
     const { knex } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
 
     const quote = await knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
-      .where({ "q.id": quoteId, "q.company_id": companyId })
+      .where({ "q.id": quoteInternalId, "q.company_id": companyInternalId })
       .select(
         "q.*",
         knex.raw(`
           json_build_object(
-            'id', c.id,
+            'id', c.public_id,
             'name', c.name,
             'email', c.email,
             'phone_number', c.phone_number,
@@ -313,14 +358,14 @@ class QuoteService {
 
     // Busca os itens do orçamento
     const items = await knex("quote_items")
-      .where({ quote_id: quoteId })
+      .where({ quote_id: quoteInternalId })
       .orderBy("item_order", "asc");
 
     // Retorna o objeto com os valores devidamente convertidos
-    return {
+    return mapQuotePublicId({
       ...parsedQuote,
       items,
-    };
+    });
   }
 
   /**
@@ -333,9 +378,15 @@ class QuoteService {
    */
   async updateQuote(fastify, companyId, quoteId, updateData) {
     const { knex, log } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
 
     // Verifica se o orçamento existe e pertence à empresa
-    const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
+    const existingQuote = await this.getQuoteById(
+      fastify,
+      companyId,
+      quoteId
+    );
 
     // Verifica se o orçamento pode ser editado
     if (["accepted", "invoiced"].includes(existingQuote.status)) {
@@ -391,11 +442,11 @@ class QuoteService {
         quoteUpdateData.total_amount_cents = totals.total;
 
         // Remove itens antigos
-        await transaction("quote_items").where({ quote_id: quoteId }).del();
+        await transaction("quote_items").where({ quote_id: quoteInternalId }).del();
 
         // Insere novos itens
         const newItems = updateData.items.map((item, index) => ({
-          quote_id: quoteId,
+          quote_id: quoteInternalId,
           product_id: item.product_id || null,
           description: item.description,
           quantity: item.quantity,
@@ -409,7 +460,7 @@ class QuoteService {
 
       // Atualiza o orçamento
       await transaction("quotes")
-        .where({ id: quoteId, company_id: companyId })
+        .where({ id: quoteInternalId, company_id: companyInternalId })
         .update(quoteUpdateData);
 
       await transaction.commit();
@@ -464,9 +515,12 @@ class QuoteService {
       updateData.rejected_at = knex.fn.now();
     }
 
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
+
     try {
       await knex("quotes")
-        .where({ id: quoteId, company_id: companyId })
+        .where({ id: quoteInternalId, company_id: companyInternalId })
         .update(updateData);
 
       log.info(`Status do orçamento #${quoteId} alterado para ${newStatus}`);
@@ -487,6 +541,8 @@ class QuoteService {
    */
   async deleteQuote(fastify, companyId, quoteId) {
     const { knex, log } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
 
     // Verifica se o orçamento existe
     const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
@@ -505,11 +561,11 @@ class QuoteService {
 
     try {
       // Remove primeiro os itens (devido à foreign key)
-      await transaction("quote_items").where({ quote_id: quoteId }).del();
+      await transaction("quote_items").where({ quote_id: quoteInternalId }).del();
 
       // Remove o orçamento
       const result = await transaction("quotes")
-        .where({ id: quoteId, company_id: companyId })
+        .where({ id: quoteInternalId, company_id: companyInternalId })
         .del();
 
       await transaction.commit();
@@ -541,8 +597,9 @@ class QuoteService {
    */
   async getQuoteCount(fastify, companyId, period = "month") {
     const { knex } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
 
-    let query = knex("quotes").where({ company_id: companyId });
+    let query = knex("quotes").where({ company_id: companyInternalId });
 
     if (period === "month") {
       // Orçamentos do mês atual
@@ -572,10 +629,11 @@ class QuoteService {
    */
   async generateQuoteNumber(fastify, companyId) {
     const { knex } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
 
     // Busca o último número de orçamento da empresa
     const lastQuote = await knex("quotes")
-      .where({ company_id: companyId })
+      .where({ company_id: companyInternalId })
       .orderBy("id", "desc")
       .first();
 
@@ -646,18 +704,21 @@ class QuoteService {
    */
   async getExpiringQuotes(fastify, companyId, daysAhead = 7) {
     const { knex } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
 
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
 
-    return knex("quotes as q")
+    const results = await knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
-      .where("q.company_id", companyId)
+      .where("q.company_id", companyInternalId)
       .where("q.status", "sent")
       .where("q.expiry_date", "<=", futureDate.toISOString().split("T")[0])
       .where("q.expiry_date", ">=", new Date().toISOString().split("T")[0])
       .select("q.*", "c.name as client_name", "c.email as client_email")
       .orderBy("q.expiry_date", "asc");
+
+    return results.map(mapQuotePublicId);
   }
 
   /**
@@ -668,9 +729,10 @@ class QuoteService {
    */
   async getQuoteStats(fastify, companyId) {
     const { knex } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
 
     const stats = await knex("quotes")
-      .where({ company_id: companyId })
+      .where({ company_id: companyInternalId })
       .select(
         knex.raw("COUNT(*) as total_quotes"),
         knex.raw("COUNT(CASE WHEN status = 'draft' THEN 1 END) as draft_count"),

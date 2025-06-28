@@ -40,9 +40,9 @@ const S_QUOTE_RESPONSE = {
   $id: "QuoteResponse",
   type: "object",
   properties: {
-    id: { type: "integer", description: "ID do orçamento" },
+    id: { type: "string", description: "ID público do orçamento" },
     company_id: { type: "integer", description: "ID da empresa" },
-    client_id: { type: "integer", description: "ID do cliente" },
+    client_id: { type: "string", description: "ID do cliente" },
     created_by_user_id: {
       type: ["integer", "null"],
       description: "ID do usuário que criou",
@@ -138,7 +138,7 @@ const S_QUOTE_RESPONSE = {
     client: {
       type: "object",
       properties: {
-        id: { type: "integer" },
+        id: { type: "string" },
         name: { type: "string" },
         email: { type: ["string", "null"] },
         phone_number: { type: ["string", "null"] },
@@ -158,7 +158,7 @@ const S_QUOTE_CREATE_PAYLOAD = {
   type: "object",
   properties: {
     client_id: {
-      type: "integer",
+      type: "string",
       description: "ID do cliente",
     },
     quote_number: {
@@ -247,7 +247,7 @@ const S_QUOTE_UPDATE_PAYLOAD = {
   $id: "QuoteUpdatePayload",
   type: "object",
   properties: {
-    client_id: { type: "integer" },
+    client_id: { type: "string" },
     quote_number: {
       type: "string",
       minLength: 1,
@@ -317,7 +317,7 @@ const S_QUOTE_LIST_QUERYSTRING = {
         "invoiced",
       ],
     },
-    client_id: { type: "integer" },
+    client_id: { type: "string" },
     quote_number: { type: "string" },
     issue_date_from: { type: "string", format: "date" },
     issue_date_to: { type: "string", format: "date" },
@@ -336,7 +336,7 @@ const createQuoteSchema = {
   security: [{ bearerAuth: [] }],
   params: {
     type: "object",
-    properties: { companyId: { type: "integer" } },
+    properties: { companyId: { type: "string" } },
     required: ["companyId"],
   },
   body: { $ref: "QuoteCreatePayload#" },
@@ -360,7 +360,7 @@ const listQuotesSchema = {
   security: [{ bearerAuth: [] }],
   params: {
     type: "object",
-    properties: { companyId: { type: "integer" } },
+    properties: { companyId: { type: "string" } },
     required: ["companyId"],
   },
   querystring: { $ref: "QuoteListQueryString#" },
@@ -395,8 +395,8 @@ const getQuoteByIdSchema = {
   params: {
     type: "object",
     properties: {
-      companyId: { type: "integer" },
-      quoteId: { type: "integer" },
+      companyId: { type: "string" },
+      quoteId: { type: "string" },
     },
     required: ["companyId", "quoteId"],
   },
@@ -418,8 +418,8 @@ const updateQuoteSchema = {
   params: {
     type: "object",
     properties: {
-      companyId: { type: "integer" },
-      quoteId: { type: "integer" },
+      companyId: { type: "string" },
+      quoteId: { type: "string" },
     },
     required: ["companyId", "quoteId"],
   },
@@ -444,8 +444,8 @@ const deleteQuoteSchema = {
   params: {
     type: "object",
     properties: {
-      companyId: { type: "integer" },
-      quoteId: { type: "integer" },
+      companyId: { type: "string" },
+      quoteId: { type: "string" },
     },
     required: ["companyId", "quoteId"],
   },
@@ -468,8 +468,8 @@ const updateQuoteStatusSchema = {
   params: {
     type: "object",
     properties: {
-      companyId: { type: "integer" },
-      quoteId: { type: "integer" },
+      companyId: { type: "string" },
+      quoteId: { type: "string" },
     },
     required: ["companyId", "quoteId"],
   },
