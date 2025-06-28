@@ -7,12 +7,45 @@ const {
 
 function mapCompanyPublicId(company) {
   if (!company) return null;
-  const { id: _ignored, public_id, ...rest } = company;
-  return { id: public_id, ...rest };
+  const {
+    id: _ignored,
+    public_id,
+    owner_id,
+    owner_public_id,
+    ...rest
+  } = company;
+  return {
+    id: public_id,
+    owner_id: owner_public_id || owner_id,
+    ...rest,
+  };
 }
 
 class CompanyService {
   constructor() {}
+
+  async _resolveCompanyId(knex, identifier) {
+    if (!isNaN(parseInt(identifier))) {
+      return parseInt(identifier);
+    }
+    const row = await knex("companies")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
+
+  async _resolveUserId(knex, identifier) {
+    if (!identifier) return null;
+    if (!isNaN(parseInt(identifier))) {
+      return parseInt(identifier);
+    }
+    const row = await knex("users")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
 
   /**
    * Método auxiliar privado para gerar e enviar o e-mail de verificação.
@@ -115,7 +148,12 @@ class CompanyService {
         await this._sendVerificationEmail(fastify, createdCompany);
       }
 
-      return mapCompanyPublicId(createdCompany);
+
+      return this.getCompanyById(
+        fastify,
+        userId,
+        createdCompany.public_id
+      );
     } catch (error) {
       fastify.log.error(error, "Erro ao criar empresa no banco de dados");
 
@@ -156,9 +194,10 @@ class CompanyService {
       throw error;
     }
 
+    const id = await this._resolveCompanyId(fastify.knex, companyId);
     const [activatedCompany] = await fastify
       .knex("companies")
-      .where("id", companyId)
+      .where("id", id)
       .update({
         status: "active",
         validation_code: null,
@@ -166,7 +205,8 @@ class CompanyService {
       })
       .returning("*");
 
-    return mapCompanyPublicId(activatedCompany);
+    return this.getCompanyById(fastify, userId, companyId);
+
   }
 
   /**
@@ -201,15 +241,24 @@ class CompanyService {
     } = queryParams;
     const offset = (page - 1) * pageSize;
 
-    let query = fastify.knex("companies");
-    let countQuery = fastify.knex("companies").count("id as total");
+    let query = fastify
+      .knex("companies as c")
+      .leftJoin("users as u", "c.owner_id", "u.id")
+      .select("c.*", "u.public_id as owner_public_id");
+    let countQuery = fastify.knex("companies as c").count("c.id as total");
 
-    if (owner_id && parseInt(owner_id) !== userId) {
-      query = query.where("owner_id", parseInt(owner_id));
-      countQuery = countQuery.where("owner_id", parseInt(owner_id));
+    if (owner_id && owner_id !== String(userId)) {
+      const ownerInternalId = await this._resolveUserId(
+        fastify.knex,
+        owner_id
+      );
+      if (ownerInternalId) {
+        query = query.where("c.owner_id", ownerInternalId);
+        countQuery = countQuery.where("c.owner_id", ownerInternalId);
+      }
     } else if (!owner_id) {
-      query = query.where("owner_id", userId);
-      countQuery = countQuery.where("owner_id", userId);
+      query = query.where("c.owner_id", userId);
+      countQuery = countQuery.where("c.owner_id", userId);
     }
 
     if (name) {
@@ -250,10 +299,18 @@ class CompanyService {
 
   async getCompanyById(fastify, userId, companyId) {
     try {
-      const company = await fastify
-        .knex("companies")
-        .where("id", companyId)
-        .first();
+      const query = fastify
+        .knex("companies as c")
+        .leftJoin("users as u", "c.owner_id", "u.id")
+        .select("c.*", "u.public_id as owner_public_id");
+
+      if (!isNaN(parseInt(companyId))) {
+        query.where("c.id", companyId);
+      } else {
+        query.where("c.public_id", companyId);
+      }
+
+      const company = await query.first();
 
       if (!company) {
         const error = new Error("Empresa não encontrada.");
@@ -283,12 +340,14 @@ class CompanyService {
     const updatePayload = { ...updateData, updated_at: fastify.knex.fn.now() };
 
     try {
+      const id = await this._resolveCompanyId(fastify.knex, companyId);
       const [updatedCompany] = await fastify
         .knex("companies")
-        .where("id", companyId)
+        .where("id", id)
         .update(updatePayload)
         .returning("*");
-      return mapCompanyPublicId(updatedCompany);
+      return this.getCompanyById(fastify, userId, companyId);
+
     } catch (error) {
       fastify.log.error(error, `Erro ao atualizar empresa ID: ${companyId}`);
       if (
@@ -315,9 +374,10 @@ class CompanyService {
     }
 
     try {
+      const id = await this._resolveCompanyId(fastify.knex, companyId);
       await fastify
         .knex("companies")
-        .where("id", companyId)
+        .where("id", id)
         .update({ status: "inactive", updated_at: fastify.knex.fn.now() });
       return { message: "Empresa desativada com sucesso." };
     } catch (error) {
@@ -403,9 +463,10 @@ class CompanyService {
     const logoUrl = uploadResult.secure_url;
 
     try {
+      const id = await this._resolveCompanyId(fastify.knex, companyId);
       const [updatedCompany] = await fastify
         .knex("companies")
-        .where("id", companyId)
+        .where("id", id)
         .update({ logo_url: logoUrl, updated_at: fastify.knex.fn.now() })
         .returning(["id", "name", "logo_url", "status", "updated_at"]);
 

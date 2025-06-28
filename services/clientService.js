@@ -7,16 +7,38 @@ function mapClientPublicId(client) {
 }
 
 class ClientService {
+  async _resolveCompanyId(knex, identifier) {
+    if (!isNaN(parseInt(identifier))) {
+      return parseInt(identifier);
+    }
+    const row = await knex("companies")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
+
+  async _resolveClientId(knex, identifier) {
+    if (!isNaN(parseInt(identifier))) {
+      return parseInt(identifier);
+    }
+    const row = await knex("clients")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
   async createClient(fastify, companyId, clientData) {
     const { knex, log } = fastify;
     const { document_number } = clientData;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
 
     // --- AJUSTE AQUI: VERIFICAÇÃO DE DUPLICIDADE ---
     // Se um número de documento foi fornecido, verifica se ele já existe para esta empresa
     if (document_number) {
       const existingClient = await knex("clients")
         .where({
-          company_id: companyId,
+          company_id: companyInternalId,
           document_number: document_number,
         })
         .first();
@@ -36,7 +58,7 @@ class ClientService {
       const [client] = await knex("clients")
         .insert({
           ...clientData,
-          company_id: companyId,
+          company_id: companyInternalId,
         })
         .returning("*");
       log.info(`Cliente #${client.id} criado para a empresa #${companyId}`);
@@ -64,15 +86,23 @@ class ClientService {
   async listClients(fastify, companyId) {
     const clients = await fastify
       .knex("clients")
-      .where({ company_id: companyId })
+      .where({ company_id: companyInternalId })
       .orderBy("name", "asc");
     return clients.map(mapClientPublicId);
   }
 
   async getClientById(fastify, companyId, clientId) {
+    const companyInternalId = await this._resolveCompanyId(
+      fastify.knex,
+      companyId
+    );
+    const clientInternalId = await this._resolveClientId(
+      fastify.knex,
+      clientId
+    );
     const client = await fastify
       .knex("clients")
-      .where({ id: clientId, company_id: companyId })
+      .where({ id: clientInternalId, company_id: companyInternalId })
       .first();
 
     if (!client) {
@@ -88,9 +118,10 @@ class ClientService {
     const { knex, log } = fastify;
     try {
       await this.getClientById(fastify, companyId, clientId);
-
+      const companyInternalId = await this._resolveCompanyId(knex, companyId);
+      const clientInternalId = await this._resolveClientId(knex, clientId);
       const [updatedClient] = await knex("clients")
-        .where({ id: clientId, company_id: companyId })
+        .where({ id: clientInternalId, company_id: companyInternalId })
         .update(
           {
             ...updateData,
@@ -118,8 +149,10 @@ class ClientService {
 
   async deleteClient(fastify, companyId, clientId) {
     const { knex, log } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const clientInternalId = await this._resolveClientId(knex, clientId);
     const result = await knex("clients")
-      .where({ id: clientId, company_id: companyId })
+      .where({ id: clientInternalId, company_id: companyInternalId })
       .del();
 
     if (result === 0) {

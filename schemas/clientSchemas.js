@@ -53,7 +53,7 @@ const createClientSchema = {
   security: [{ bearerAuth: [] }],
   params: {
     type: "object",
-    properties: { companyId: { type: "integer" } },
+    properties: { companyId: { type: "string" } },
     required: ["companyId"],
   },
   body: { $ref: "ClientCreatePayload#" },
@@ -67,7 +67,7 @@ const listClientsSchema = {
   security: [{ bearerAuth: [] }],
   params: {
     type: "object",
-    properties: { companyId: { type: "integer" } },
+    properties: { companyId: { type: "string" } },
     required: ["companyId"],
   },
   response: { 200: { type: "array", items: { $ref: "ClientResponse#" } } },
@@ -81,8 +81,8 @@ const getClientByIdSchema = {
   params: {
     type: "object",
     properties: {
-      companyId: { type: "integer" },
-      clientId: { type: "integer" },
+      companyId: { type: "string" },
+      clientId: { type: "string" },
     },
     required: ["companyId", "clientId"],
   },
@@ -97,8 +97,8 @@ const updateClientSchema = {
   params: {
     type: "object",
     properties: {
-      companyId: { type: "integer" },
-      clientId: { type: "integer" },
+      companyId: { type: "string" },
+      clientId: { type: "string" },
     },
     required: ["companyId", "clientId"],
   },
@@ -114,8 +114,8 @@ const deleteClientSchema = {
   params: {
     type: "object",
     properties: {
-      companyId: { type: "integer" },
-      clientId: { type: "integer" },
+      companyId: { type: "string" },
+      clientId: { type: "string" },
     },
     required: ["companyId", "clientId"],
   },
