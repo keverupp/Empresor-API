@@ -323,7 +323,7 @@ module.exports = async function (fastify, opts) {
             items: {
               type: "object",
               properties: {
-                id: { type: "integer" },
+                id: { type: "string" },
                 quote_number: { type: "string" },
                 expiry_date: { type: "string", format: "date" },
                 total_amount_cents: { type: "integer" },

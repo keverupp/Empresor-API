@@ -2,7 +2,7 @@
 
 function mapQuotePublicId(quote) {
   if (!quote) return null;
-  const { public_id, ...rest } = quote;
+  const { id: _ignored, public_id, ...rest } = quote;
   return { id: public_id, ...rest };
 }
 
@@ -160,7 +160,7 @@ class QuoteService {
         "q.*",
         knex.raw(`
           json_build_object(
-            'id', c.id,
+            'id', c.public_id,
             'name', c.name,
             'email', c.email,
             'phone_number', c.phone_number,
@@ -277,7 +277,7 @@ class QuoteService {
         "q.*",
         knex.raw(`
           json_build_object(
-            'id', c.id,
+            'id', c.public_id,
             'name', c.name,
             'email', c.email,
             'phone_number', c.phone_number,

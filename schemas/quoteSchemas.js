@@ -138,7 +138,7 @@ const S_QUOTE_RESPONSE = {
     client: {
       type: "object",
       properties: {
-        id: { type: "integer" },
+        id: { type: "string" },
         name: { type: "string" },
         email: { type: ["string", "null"] },
         phone_number: { type: ["string", "null"] },

@@ -5,7 +5,7 @@ const ClientResponse = {
   $id: "ClientResponse",
   type: "object",
   properties: {
-    id: { type: "integer" },
+    id: { type: "string" },
     company_id: { type: "integer" },
     name: { type: "string" },
     email: { type: ["string", "null"], format: "email" },
