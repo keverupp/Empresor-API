@@ -12,7 +12,7 @@ const S_PARAMS_WITH_ID = {
 
 // Base properties for a company, reflecting the database schema
 const companyProperties = {
-  id: { type: "integer", description: "ID da Empresa" },
+  id: { type: "string", description: "ID público da Empresa" },
   owner_id: { type: "integer", description: "ID do Usuário Proprietário" },
   name: {
     type: "string",
