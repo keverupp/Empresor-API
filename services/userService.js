@@ -4,7 +4,14 @@ async function getUserProfile(fastify, userId) {
   const { knex, log } = fastify;
 
   const user = await knex("users")
-    .select("id", "name", "email", "role", "status", "created_at")
+    .select(
+      "public_id as id",
+      "name",
+      "email",
+      "role",
+      "status",
+      "created_at"
+    )
     .where({ id: userId })
     .first();
 
