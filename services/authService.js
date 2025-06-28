@@ -72,7 +72,7 @@ async function registerUser(fastify, { name, email, password }) {
       role: "user", // Papel padrão
       status: "active", // Status padrão
     })
-    .returning(["id", "name", "email", "role", "refresh_token"]); // Inclui refresh_token para _generateUserTokens
+    .returning(["id", "public_id", "name", "email", "role", "refresh_token"]); // Inclui refresh_token para _generateUserTokens
 
   const freePlan = await knex("plans").where({ name: "Gratuito" }).first();
   if (freePlan) {
@@ -94,7 +94,7 @@ async function registerUser(fastify, { name, email, password }) {
 
   // Retorna apenas os campos seguros do usuário
   const safeUser = {
-    id: newUserFromDB.id,
+    id: newUserFromDB.public_id,
     name: newUserFromDB.name,
     email: newUserFromDB.email,
     role: newUserFromDB.role,
@@ -137,7 +137,7 @@ async function loginUser(fastify, { email, password }) {
   // Gera novos tokens, rotacionando o refresh token (boa prática no login)
   const tokens = await _generateUserTokens(fastify, user, true);
   const userResponse = {
-    id: user.id,
+    id: user.public_id,
     name: user.name,
     email: user.email,
     role: user.role,
