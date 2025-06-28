@@ -7,7 +7,7 @@ const {
 
 function mapCompanyPublicId(company) {
   if (!company) return null;
-  const { public_id, ...rest } = company;
+  const { id: _ignored, public_id, ...rest } = company;
   return { id: public_id, ...rest };
 }
 
