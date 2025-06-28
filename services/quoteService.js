@@ -1,5 +1,11 @@
 "use strict";
 
+function mapQuotePublicId(quote) {
+  if (!quote) return null;
+  const { id: _ignored, public_id, ...rest } = quote;
+  return { id: public_id, ...rest };
+}
+
 class QuoteService {
   /**
    * Cria um novo orçamento com itens
@@ -154,7 +160,7 @@ class QuoteService {
         "q.*",
         knex.raw(`
           json_build_object(
-            'id', c.id,
+            'id', c.public_id,
             'name', c.name,
             'email', c.email,
             'phone_number', c.phone_number,
@@ -224,10 +230,10 @@ class QuoteService {
             .where({ quote_id: quote.id })
             .orderBy("item_order", "asc");
 
-          return {
+          return mapQuotePublicId({
             ...quote,
             items,
-          };
+          });
         })
       );
 
@@ -271,7 +277,7 @@ class QuoteService {
         "q.*",
         knex.raw(`
           json_build_object(
-            'id', c.id,
+            'id', c.public_id,
             'name', c.name,
             'email', c.email,
             'phone_number', c.phone_number,
@@ -317,10 +323,10 @@ class QuoteService {
       .orderBy("item_order", "asc");
 
     // Retorna o objeto com os valores devidamente convertidos
-    return {
+    return mapQuotePublicId({
       ...parsedQuote,
       items,
-    };
+    });
   }
 
   /**
@@ -650,7 +656,7 @@ class QuoteService {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
 
-    return knex("quotes as q")
+    const results = await knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
       .where("q.company_id", companyId)
       .where("q.status", "sent")
@@ -658,6 +664,8 @@ class QuoteService {
       .where("q.expiry_date", ">=", new Date().toISOString().split("T")[0])
       .select("q.*", "c.name as client_name", "c.email as client_email")
       .orderBy("q.expiry_date", "asc");
+
+    return results.map(mapQuotePublicId);
   }
 
   /**

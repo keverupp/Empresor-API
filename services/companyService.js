@@ -5,6 +5,12 @@ const {
   getCompanyVerificationEmailHTML,
 } = require("../utils/verificationEmailTemplate");
 
+function mapCompanyPublicId(company) {
+  if (!company) return null;
+  const { id: _ignored, public_id, ...rest } = company;
+  return { id: public_id, ...rest };
+}
+
 class CompanyService {
   constructor() {}
 
@@ -109,7 +115,7 @@ class CompanyService {
         await this._sendVerificationEmail(fastify, createdCompany);
       }
 
-      return createdCompany;
+      return mapCompanyPublicId(createdCompany);
     } catch (error) {
       fastify.log.error(error, "Erro ao criar empresa no banco de dados");
 
@@ -160,7 +166,7 @@ class CompanyService {
       })
       .returning("*");
 
-    return activatedCompany;
+    return mapCompanyPublicId(activatedCompany);
   }
 
   /**
@@ -228,7 +234,7 @@ class CompanyService {
       const totalPages = Math.ceil(totalItems / pageSize);
 
       return {
-        data: companies,
+        data: companies.map(mapCompanyPublicId),
         pagination: {
           totalItems: parseInt(totalItems),
           totalPages,
@@ -263,7 +269,7 @@ class CompanyService {
         throw error;
       }
 
-      return company;
+      return mapCompanyPublicId(company);
     } catch (error) {
       if (error.statusCode) throw error;
       fastify.log.error(error, `Erro ao obter empresa por ID: ${companyId}`);
@@ -282,7 +288,7 @@ class CompanyService {
         .where("id", companyId)
         .update(updatePayload)
         .returning("*");
-      return updatedCompany;
+      return mapCompanyPublicId(updatedCompany);
     } catch (error) {
       fastify.log.error(error, `Erro ao atualizar empresa ID: ${companyId}`);
       if (
@@ -408,7 +414,7 @@ class CompanyService {
       );
       return {
         message: "Logo atualizado com sucesso!",
-        company: updatedCompany,
+        company: mapCompanyPublicId(updatedCompany),
       };
     } catch (dbError) {
       fastify.log.error(

@@ -1,5 +1,11 @@
 "use strict";
 
+function mapClientPublicId(client) {
+  if (!client) return null;
+  const { id: _ignored, public_id, ...rest } = client;
+  return { id: public_id, ...rest };
+}
+
 class ClientService {
   async createClient(fastify, companyId, clientData) {
     const { knex, log } = fastify;
@@ -34,7 +40,7 @@ class ClientService {
         })
         .returning("*");
       log.info(`Cliente #${client.id} criado para a empresa #${companyId}`);
-      return client;
+      return mapClientPublicId(client);
     } catch (error) {
       log.error(error, `Erro ao criar cliente para a empresa #${companyId}`);
 
@@ -56,10 +62,11 @@ class ClientService {
   }
 
   async listClients(fastify, companyId) {
-    return fastify
+    const clients = await fastify
       .knex("clients")
       .where({ company_id: companyId })
       .orderBy("name", "asc");
+    return clients.map(mapClientPublicId);
   }
 
   async getClientById(fastify, companyId, clientId) {
@@ -74,7 +81,7 @@ class ClientService {
       error.code = "CLIENT_NOT_FOUND";
       throw error;
     }
-    return client;
+    return mapClientPublicId(client);
   }
 
   async updateClient(fastify, companyId, clientId, updateData) {
@@ -93,7 +100,7 @@ class ClientService {
         );
 
       log.info(`Cliente #${clientId} da empresa #${companyId} atualizado.`);
-      return updatedClient;
+      return mapClientPublicId(updatedClient);
     } catch (error) {
       if (error.statusCode === 404) throw error;
       log.error(error, `Erro ao atualizar cliente #${clientId}`);

@@ -40,7 +40,7 @@ const S_QUOTE_RESPONSE = {
   $id: "QuoteResponse",
   type: "object",
   properties: {
-    id: { type: "integer", description: "ID do orçamento" },
+    id: { type: "string", description: "ID público do orçamento" },
     company_id: { type: "integer", description: "ID da empresa" },
     client_id: { type: "integer", description: "ID do cliente" },
     created_by_user_id: {
@@ -138,7 +138,7 @@ const S_QUOTE_RESPONSE = {
     client: {
       type: "object",
       properties: {
-        id: { type: "integer" },
+        id: { type: "string" },
         name: { type: "string" },
         email: { type: ["string", "null"] },
         phone_number: { type: ["string", "null"] },
