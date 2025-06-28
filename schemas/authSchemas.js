@@ -5,7 +5,7 @@ const S_USER_RESPONSE = {
   $id: "UserAuthResponse", // ID para referência via $ref
   type: "object",
   properties: {
-    id: { type: "integer", description: "ID do usuário" },
+    id: { type: "string", description: "ID público do usuário" },
     name: { type: "string", description: "Nome do usuário" },
     email: {
       type: "string",
