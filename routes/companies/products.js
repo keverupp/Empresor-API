@@ -24,9 +24,13 @@ module.exports = async function (fastify, opts) {
               ownerError.statusCode === 403 ||
               ownerError.statusCode === 404
             ) {
+              const companyInternalId = await services.company._resolveCompanyId(
+                knex,
+                companyId
+              );
               const share = await knex("company_shares")
                 .where({
-                  company_id: companyId,
+                  company_id: companyInternalId,
                   shared_with_user_id: userId,
                   status: "active",
                 })
@@ -235,7 +239,7 @@ module.exports = async function (fastify, opts) {
         security: [{ bearerAuth: [] }],
         params: {
           type: "object",
-          properties: { companyId: { type: "integer" } },
+          properties: { companyId: { type: "string" } },
           required: ["companyId"],
         },
         response: {

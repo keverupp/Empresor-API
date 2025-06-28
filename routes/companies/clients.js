@@ -21,9 +21,13 @@ module.exports = async function (fastify, opts) {
         } catch (ownerError) {
           // 2. Se não for o proprietário (o `catch` foi acionado), verifica se há um compartilhamento ativo.
           if (ownerError.statusCode === 403 || ownerError.statusCode === 404) {
+            const companyInternalId = await services.company._resolveCompanyId(
+              knex,
+              companyId
+            );
             const share = await knex("company_shares")
               .where({
-                company_id: companyId,
+                company_id: companyInternalId,
                 shared_with_user_id: userId,
                 status: "active",
               })
