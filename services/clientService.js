@@ -84,10 +84,6 @@ class ClientService {
   }
 
   async listClients(fastify, companyId) {
-    const companyInternalId = await this._resolveCompanyId(
-      fastify.knex,
-      companyId
-    );
     const clients = await fastify
       .knex("clients")
       .where({ company_id: companyInternalId })

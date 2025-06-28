@@ -148,6 +148,7 @@ class CompanyService {
         await this._sendVerificationEmail(fastify, createdCompany);
       }
 
+
       return this.getCompanyById(
         fastify,
         userId,
@@ -205,6 +206,7 @@ class CompanyService {
       .returning("*");
 
     return this.getCompanyById(fastify, userId, companyId);
+
   }
 
   /**
@@ -345,6 +347,7 @@ class CompanyService {
         .update(updatePayload)
         .returning("*");
       return this.getCompanyById(fastify, userId, companyId);
+
     } catch (error) {
       fastify.log.error(error, `Erro ao atualizar empresa ID: ${companyId}`);
       if (
