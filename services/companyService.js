@@ -16,7 +16,7 @@ function mapCompanyPublicId(company) {
   } = company;
   return {
     id: public_id,
-    owner_id: owner_public_id || owner_id,
+    owner_id: (owner_public_id || owner_id) && String(owner_public_id || owner_id),
     ...rest,
   };
 }

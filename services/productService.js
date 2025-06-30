@@ -5,7 +5,9 @@ function mapProductPublicId(product) {
   const { id: _ignored, public_id, company_public_id, ...rest } = product;
   return {
     id: public_id,
-    company_id: company_public_id || product.company_id,
+    company_id:
+      (company_public_id || product.company_id) &&
+      String(company_public_id || product.company_id),
     ...rest,
   };
 }

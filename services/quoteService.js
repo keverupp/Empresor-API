@@ -43,12 +43,16 @@ function mapQuotePublicId(quote) {
 
   return {
     id: public_id,
-    company_id: company_public_id || quote.company_id,
-    client_id: client_public_id || quote.client_id,
+    company_id:
+      (company_public_id || quote.company_id) &&
+      String(company_public_id || quote.company_id),
+    client_id:
+      (client_public_id || quote.client_id) &&
+      String(client_public_id || quote.client_id),
     created_by_user_id:
       created_by_user_public_id !== undefined
-        ? created_by_user_public_id
-        : quote.created_by_user_id,
+        ? String(created_by_user_public_id)
+        : String(quote.created_by_user_id),
     subtotal_cents:
       subtotal_cents !== undefined ? parseInt(subtotal_cents, 10) : undefined,
     discount_value_cents:
