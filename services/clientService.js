@@ -5,7 +5,9 @@ function mapClientPublicId(client) {
   const { id: _ignored, public_id, company_public_id, ...rest } = client;
   return {
     id: public_id,
-    company_id: company_public_id || client.company_id,
+    company_id:
+      (company_public_id || client.company_id) &&
+      String(company_public_id || client.company_id),
     ...rest,
   };
 }
