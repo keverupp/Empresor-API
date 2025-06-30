@@ -6,6 +6,8 @@ function mapQuotePublicId(quote) {
     id: _ignored,
     public_id,
     company_public_id,
+    client_public_id,
+    created_by_user_public_id,
     items,
     subtotal_cents,
     discount_value_cents,
@@ -42,6 +44,11 @@ function mapQuotePublicId(quote) {
   return {
     id: public_id,
     company_id: company_public_id || quote.company_id,
+    client_id: client_public_id || quote.client_id,
+    created_by_user_id:
+      created_by_user_public_id !== undefined
+        ? created_by_user_public_id
+        : quote.created_by_user_id,
     subtotal_cents:
       subtotal_cents !== undefined ? parseInt(subtotal_cents, 10) : undefined,
     discount_value_cents:
@@ -283,11 +290,14 @@ class QuoteService {
     // Query principal com JOIN para trazer dados do cliente e da empresa
     let query = knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
+      .leftJoin("users as u", "q.created_by_user_id", "u.id")
       .join("companies as comp", "q.company_id", "comp.id")
       .where("q.company_id", companyInternalId)
       .select(
         "q.*",
         "comp.public_id as company_public_id",
+        "c.public_id as client_public_id",
+        "u.public_id as created_by_user_public_id",
         knex.raw(`
           json_build_object(
             'id', c.public_id,
@@ -407,11 +417,14 @@ class QuoteService {
 
     const quote = await knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
+      .leftJoin("users as u", "q.created_by_user_id", "u.id")
       .join("companies as comp", "q.company_id", "comp.id")
       .where({ "q.id": quoteInternalId, "q.company_id": companyInternalId })
       .select(
         "q.*",
         "comp.public_id as company_public_id",
+        "c.public_id as client_public_id",
+        "u.public_id as created_by_user_public_id",
         knex.raw(`
           json_build_object(
             'id', c.public_id,
@@ -846,6 +859,7 @@ class QuoteService {
 
     const results = await knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
+      .leftJoin("users as u", "q.created_by_user_id", "u.id")
       .join("companies as comp", "q.company_id", "comp.id")
       .where("q.company_id", companyInternalId)
       .where("q.status", "sent")
@@ -854,6 +868,8 @@ class QuoteService {
       .select(
         "q.*",
         "comp.public_id as company_public_id",
+        "c.public_id as client_public_id",
+        "u.public_id as created_by_user_public_id",
         "c.name as client_name",
         "c.email as client_email"
       )

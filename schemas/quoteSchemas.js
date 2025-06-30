@@ -44,7 +44,7 @@ const S_QUOTE_RESPONSE = {
     company_id: { type: "string", description: "ID da empresa" },
     client_id: { type: "string", description: "ID do cliente" },
     created_by_user_id: {
-      type: ["integer", "null"],
+      type: ["string", "null"],
       description: "ID do usuário que criou",
     },
     quote_number: {
