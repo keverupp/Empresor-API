@@ -12,9 +12,6 @@ function mapProductPublicId(product) {
 
 class ProductService {
   async _resolveCompanyId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("companies")
       .select("id")
       .where("public_id", identifier)
@@ -23,9 +20,6 @@ class ProductService {
   }
 
   async _resolveProductId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("products")
       .select("id")
       .where("public_id", identifier)

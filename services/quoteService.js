@@ -2,19 +2,26 @@
 
 function mapQuotePublicId(quote) {
   if (!quote) return null;
-  const { id: _ignored, public_id, company_public_id, ...rest } = quote;
+  const { id: _ignored, public_id, company_public_id, items, ...rest } = quote;
+  const mappedItems = Array.isArray(items)
+    ? items.map((it) => {
+        const { product_public_id, ...itemRest } = it;
+        return {
+          ...itemRest,
+          product_id: product_public_id || it.product_id,
+        };
+      })
+    : undefined;
   return {
     id: public_id,
     company_id: company_public_id || quote.company_id,
+    ...(mappedItems !== undefined ? { items: mappedItems } : {}),
     ...rest,
   };
 }
 
 class QuoteService {
   async _resolveCompanyId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("companies")
       .select("id")
       .where("public_id", identifier)
@@ -23,9 +30,6 @@ class QuoteService {
   }
 
   async _resolveClientId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("clients")
       .select("id")
       .where("public_id", identifier)
@@ -34,9 +38,6 @@ class QuoteService {
   }
 
   async _resolveQuoteId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("quotes")
       .select("id")
       .where("public_id", identifier)
@@ -45,9 +46,6 @@ class QuoteService {
   }
 
   async _resolveProductId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("products")
       .select("id")
       .where("public_id", identifier)
@@ -318,9 +316,11 @@ class QuoteService {
       // Para cada orçamento, busca os itens
       const quotesWithItems = await Promise.all(
         quotes.map(async (quote) => {
-          const items = await knex("quote_items")
+          const items = await knex("quote_items as qi")
+            .leftJoin("products as p", "qi.product_id", "p.id")
             .where({ quote_id: quote.id })
-            .orderBy("item_order", "asc");
+            .select("qi.*", "p.public_id as product_public_id")
+            .orderBy("qi.item_order", "asc");
 
           return mapQuotePublicId({
             ...quote,
@@ -414,9 +414,11 @@ class QuoteService {
     // --- FIM DA CORREÇÃO DEFINITIVA ---
 
     // Busca os itens do orçamento
-    const items = await knex("quote_items")
+    const items = await knex("quote_items as qi")
+      .leftJoin("products as p", "qi.product_id", "p.id")
       .where({ quote_id: quoteInternalId })
-      .orderBy("item_order", "asc");
+      .select("qi.*", "p.public_id as product_public_id")
+      .orderBy("qi.item_order", "asc");
 
     // Retorna o objeto com os valores devidamente convertidos
     return mapQuotePublicId({
