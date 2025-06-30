@@ -8,8 +8,8 @@ function mapClientPublicId(client) {
 
 class ClientService {
   async _resolveCompanyId(knex, identifier) {
-    if (!isNaN(parseInt(identifier))) {
-      return parseInt(identifier);
+    if (/^\d+$/.test(String(identifier))) {
+      return parseInt(identifier, 10);
     }
     const row = await knex("companies")
       .select("id")
@@ -19,8 +19,8 @@ class ClientService {
   }
 
   async _resolveClientId(knex, identifier) {
-    if (!isNaN(parseInt(identifier))) {
-      return parseInt(identifier);
+    if (/^\d+$/.test(String(identifier))) {
+      return parseInt(identifier, 10);
     }
     const row = await knex("clients")
       .select("id")
@@ -84,6 +84,10 @@ class ClientService {
   }
 
   async listClients(fastify, companyId) {
+    const companyInternalId = await this._resolveCompanyId(
+      fastify.knex,
+      companyId
+    );
     const clients = await fastify
       .knex("clients")
       .where({ company_id: companyInternalId })

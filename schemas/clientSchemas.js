@@ -6,7 +6,7 @@ const ClientResponse = {
   type: "object",
   properties: {
     id: { type: "string" },
-    company_id: { type: "integer" },
+    company_id: { type: "string" },
     name: { type: "string" },
     email: { type: ["string", "null"], format: "email" },
     phone_number: { type: ["string", "null"] },

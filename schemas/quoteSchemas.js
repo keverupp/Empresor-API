@@ -7,7 +7,7 @@ const S_QUOTE_ITEM = {
   properties: {
     id: { type: "integer", description: "ID do item" },
     product_id: {
-      type: ["integer", "null"],
+      type: ["string", "null"],
       description: "ID do produto (se vinculado ao catálogo)",
     },
     description: {
@@ -41,7 +41,7 @@ const S_QUOTE_RESPONSE = {
   type: "object",
   properties: {
     id: { type: "string", description: "ID público do orçamento" },
-    company_id: { type: "integer", description: "ID da empresa" },
+    company_id: { type: "string", description: "ID da empresa" },
     client_id: { type: "string", description: "ID do cliente" },
     created_by_user_id: {
       type: ["integer", "null"],
@@ -216,7 +216,7 @@ const S_QUOTE_CREATE_PAYLOAD = {
         type: "object",
         properties: {
           product_id: {
-            type: ["integer", "null"],
+            type: ["string", "null"],
             description: "ID do produto (opcional)",
           },
           description: {
@@ -286,7 +286,7 @@ const S_QUOTE_UPDATE_PAYLOAD = {
             type: ["integer", "null"],
             description: "ID do item (para atualização)",
           },
-          product_id: { type: ["integer", "null"] },
+          product_id: { type: ["string", "null"] },
           description: { type: "string", minLength: 1 },
           quantity: { type: "number", minimum: 0.01 },
           unit_price_cents: { type: "integer", minimum: 0 },

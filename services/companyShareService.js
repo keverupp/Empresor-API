@@ -1,8 +1,19 @@
 "use strict";
 
 class CompanyShareService {
+  async _resolveCompanyId(knex, identifier) {
+    if (/^\d+$/.test(String(identifier))) {
+      return parseInt(identifier, 10);
+    }
+    const row = await knex("companies")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
   async createShare(fastify, owner, companyId, recipientEmail, permissions) {
     const { knex, log, services } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
     const { permission: PermissionService } = services;
 
     if (owner.email === recipientEmail) {
@@ -23,7 +34,7 @@ class CompanyShareService {
     }
 
     const existingShare = await knex("company_shares")
-      .where({ company_id: companyId, shared_with_user_id: recipient.id })
+      .where({ company_id: companyInternalId, shared_with_user_id: recipient.id })
       .first();
     if (existingShare) {
       const error = new Error(
@@ -40,7 +51,7 @@ class CompanyShareService {
     );
 
     const ownerShareCountResult = await knex("company_shares")
-      .where({ company_id: companyId })
+      .where({ company_id: companyInternalId })
       .count("id as total")
       .first();
     if (
@@ -76,7 +87,7 @@ class CompanyShareService {
     }
 
     const shareToInsert = {
-      company_id: companyId,
+      company_id: companyInternalId,
       shared_with_user_id: recipient.id,
       shared_by_user_id: owner.id,
       permissions: permissions || {},
@@ -103,10 +114,14 @@ class CompanyShareService {
   }
 
   async listShares(fastify, companyId) {
+    const companyInternalId = await this._resolveCompanyId(
+      fastify.knex,
+      companyId
+    );
     return fastify
       .knex("company_shares as cs")
       .join("users as u", "cs.shared_with_user_id", "u.id")
-      .where("cs.company_id", companyId)
+      .where("cs.company_id", companyInternalId)
       .select(
         "cs.id as share_id",
         "u.id as user_id",
@@ -119,10 +134,14 @@ class CompanyShareService {
   }
 
   async deleteShare(fastify, companyId, sharedUserId) {
+    const companyInternalId = await this._resolveCompanyId(
+      fastify.knex,
+      companyId
+    );
     const result = await fastify
       .knex("company_shares")
       .where({
-        company_id: companyId,
+        company_id: companyInternalId,
         shared_with_user_id: sharedUserId, // Corrigido para a nova coluna
       })
       .del();

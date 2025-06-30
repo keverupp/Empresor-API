@@ -5,8 +5,8 @@ const S_PRODUCT_RESPONSE = {
   $id: "ProductResponse",
   type: "object",
   properties: {
-    id: { type: "integer", description: "ID do produto" },
-    company_id: { type: "integer", description: "ID da empresa" },
+    id: { type: "string", description: "ID do produto" },
+    company_id: { type: "string", description: "ID da empresa" },
     name: {
       type: "string",
       maxLength: 255,
@@ -172,7 +172,7 @@ const createProductSchema = {
   security: [{ bearerAuth: [] }],
   params: {
     type: "object",
-    properties: { companyId: { type: "integer" } },
+    properties: { companyId: { type: "string" } },
     required: ["companyId"],
   },
   body: { $ref: "ProductCreatePayload#" },
@@ -198,7 +198,7 @@ const listProductsSchema = {
   security: [{ bearerAuth: [] }],
   params: {
     type: "object",
-    properties: { companyId: { type: "integer" } },
+    properties: { companyId: { type: "string" } },
     required: ["companyId"],
   },
   querystring: { $ref: "ProductListQueryString#" },
@@ -237,8 +237,8 @@ const getProductByIdSchema = {
   params: {
     type: "object",
     properties: {
-      companyId: { type: "integer" },
-      productId: { type: "integer" },
+      companyId: { type: "string" },
+      productId: { type: "string" },
     },
     required: ["companyId", "productId"],
   },
@@ -263,8 +263,8 @@ const updateProductSchema = {
   params: {
     type: "object",
     properties: {
-      companyId: { type: "integer" },
-      productId: { type: "integer" },
+      companyId: { type: "string" },
+      productId: { type: "string" },
     },
     required: ["companyId", "productId"],
   },
@@ -292,8 +292,8 @@ const deleteProductSchema = {
   params: {
     type: "object",
     properties: {
-      companyId: { type: "integer" },
-      productId: { type: "integer" },
+      companyId: { type: "string" },
+      productId: { type: "string" },
     },
     required: ["companyId", "productId"],
   },
