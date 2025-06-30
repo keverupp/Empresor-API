@@ -3,11 +3,15 @@
 
 const fp = require("fastify-plugin");
 const Knex = require("knex");
+const { newDb } = require("pg-mem");
+const { randomUUID } = require("crypto");
 
 // Configuração do Knex baseada no ambiente
 function getKnexConfig(env, databaseUrl) {
+  const usePgMem = env === "test";
+
   const baseConfig = {
-    client: "pg",
+    client: usePgMem ? "pg" : "pg",
     connection: databaseUrl,
     pool: {
       min: 2,
@@ -20,6 +24,7 @@ function getKnexConfig(env, databaseUrl) {
     seeds: {
       directory: "./seeds",
     },
+    ...(usePgMem ? { useNullAsDefault: true } : {}),
   };
 
   // Configurações específicas por ambiente
@@ -60,18 +65,27 @@ async function knexConnector(fastify, options) {
       );
     }
 
-    // Obter configuração do Knex
     const environment = fastify.config.NODE_ENV || "development";
-    const knexConfig = getKnexConfig(environment, fastify.config.DATABASE_URL);
+    let knexInstance;
 
-    fastify.log.info(`Inicializando Knex para ambiente: ${environment}`);
-
-    // Criar instância do Knex
-    const knexInstance = Knex(knexConfig);
-
-    // Testar conexão
-    await knexInstance.raw("SELECT 1 as test");
-    fastify.log.info("✅ Conexão com banco de dados estabelecida com sucesso");
+    if (environment === "test") {
+      const db = newDb();
+      db.public.registerFunction({
+        name: "gen_random_uuid",
+        returns: "uuid",
+        implementation: randomUUID,
+      });
+      knexInstance = db.adapters.createKnex();
+      fastify.log.info("✅ Banco de dados em memória (pg-mem) inicializado");
+      await knexInstance.migrate.latest();
+      await knexInstance.seed.run();
+    } else {
+      const knexConfig = getKnexConfig(environment, fastify.config.DATABASE_URL);
+      fastify.log.info(`Inicializando Knex para ambiente: ${environment}`);
+      knexInstance = Knex(knexConfig);
+      await knexInstance.raw("SELECT 1 as test");
+      fastify.log.info("✅ Conexão com banco de dados estabelecida com sucesso");
+    }
 
     // Decorar o Fastify com a instância do Knex
     fastify.decorate("knex", knexInstance);
