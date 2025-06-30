@@ -2,19 +2,60 @@
 
 function mapQuotePublicId(quote) {
   if (!quote) return null;
-  const { id: _ignored, public_id, company_public_id, items, ...rest } = quote;
+  const {
+    id: _ignored,
+    public_id,
+    company_public_id,
+    items,
+    subtotal_cents,
+    discount_value_cents,
+    tax_amount_cents,
+    total_amount_cents,
+    ...rest
+  } = quote;
+
   const mappedItems = Array.isArray(items)
     ? items.map((it) => {
-        const { product_public_id, ...itemRest } = it;
+        const {
+          product_public_id,
+          unit_price_cents,
+          total_price_cents,
+          quantity,
+          ...itemRest
+        } = it;
         return {
           ...itemRest,
           product_id: product_public_id || it.product_id,
+          quantity: quantity !== undefined ? parseFloat(quantity) : undefined,
+          unit_price_cents:
+            unit_price_cents !== undefined
+              ? parseInt(unit_price_cents, 10)
+              : undefined,
+          total_price_cents:
+            total_price_cents !== undefined
+              ? parseInt(total_price_cents, 10)
+              : undefined,
         };
       })
     : undefined;
+
   return {
     id: public_id,
     company_id: company_public_id || quote.company_id,
+    subtotal_cents:
+      subtotal_cents !== undefined ? parseInt(subtotal_cents, 10) : undefined,
+    discount_value_cents:
+      discount_value_cents === null || discount_value_cents === undefined
+        ? null
+        : parseInt(discount_value_cents, 10),
+    tax_amount_cents:
+      tax_amount_cents === null || tax_amount_cents === undefined
+        ? null
+        : parseInt(tax_amount_cents, 10),
+    total_amount_cents:
+      total_amount_cents !== undefined
+        ? parseInt(total_amount_cents, 10)
+        : undefined,
     ...(mappedItems !== undefined ? { items: mappedItems } : {}),
     ...rest,
   };
