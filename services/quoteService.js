@@ -2,8 +2,12 @@
 
 function mapQuotePublicId(quote) {
   if (!quote) return null;
-  const { id: _ignored, public_id, ...rest } = quote;
-  return { id: public_id, ...rest };
+  const { id: _ignored, public_id, company_public_id, ...rest } = quote;
+  return {
+    id: public_id,
+    company_id: company_public_id || quote.company_id,
+    ...rest,
+  };
 }
 
 class QuoteService {
@@ -34,6 +38,17 @@ class QuoteService {
       return parseInt(identifier, 10);
     }
     const row = await knex("quotes")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
+
+  async _resolveProductId(knex, identifier) {
+    if (/^\d+$/.test(String(identifier))) {
+      return parseInt(identifier, 10);
+    }
+    const row = await knex("products")
       .select("id")
       .where("public_id", identifier)
       .first();
@@ -93,9 +108,47 @@ class QuoteService {
       throw error;
     }
 
-    // 3. Cálculo dos totais (esta função já está correta)
+    // Resolve itens convertendo IDs públicos de produtos e preenchendo dados
+    const resolvedItems = await Promise.all(
+      items.map(async (item) => {
+        let productInternalId = null;
+        let description = item.description;
+        let unitPrice = item.unit_price_cents;
+
+        if (item.product_id) {
+          productInternalId = await this._resolveProductId(
+            knex,
+            item.product_id
+          );
+
+          const product = await knex("products")
+            .where({ id: productInternalId, company_id: companyInternalId })
+            .first();
+          if (!product) {
+            const err = new Error(
+              "Produto não encontrado nesta empresa."
+            );
+            err.statusCode = 404;
+            err.code = "PRODUCT_NOT_FOUND";
+            throw err;
+          }
+
+          if (description == null) description = product.name;
+          if (unitPrice == null) unitPrice = product.unit_price_cents;
+        }
+
+        return {
+          product_id: productInternalId,
+          description,
+          quantity: item.quantity,
+          unit_price_cents: unitPrice,
+        };
+      })
+    );
+
+    // 3. Cálculo dos totais usando os itens resolvidos
     const totals = this._calculateTotals(
-      items,
+      resolvedItems,
       discount_type,
       discount_value_cents,
       tax_amount_cents
@@ -131,7 +184,7 @@ class QuoteService {
         })
         .returning("*");
 
-      const quoteItems = items.map((item, index) => ({
+      const quoteItems = resolvedItems.map((item, index) => ({
         quote_id: quote.id,
         product_id: item.product_id || null,
         description: item.description,
@@ -188,12 +241,14 @@ class QuoteService {
 
     const offset = (page - 1) * pageSize;
 
-    // Query principal com JOIN para trazer dados do cliente
+    // Query principal com JOIN para trazer dados do cliente e da empresa
     let query = knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
+      .join("companies as comp", "q.company_id", "comp.id")
       .where("q.company_id", companyInternalId)
       .select(
         "q.*",
+        "comp.public_id as company_public_id",
         knex.raw(`
           json_build_object(
             'id', c.public_id,
@@ -311,9 +366,11 @@ class QuoteService {
 
     const quote = await knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
+      .join("companies as comp", "q.company_id", "comp.id")
       .where({ "q.id": quoteInternalId, "q.company_id": companyInternalId })
       .select(
         "q.*",
+        "comp.public_id as company_public_id",
         knex.raw(`
           json_build_object(
             'id', c.public_id,
@@ -427,8 +484,43 @@ class QuoteService {
 
       // Se houver novos itens, recalcula os totais
       if (updateData.items) {
+        const resolvedItems = await Promise.all(
+          updateData.items.map(async (item) => {
+            let productInternalId = null;
+            let description = item.description;
+            let unitPrice = item.unit_price_cents;
+
+            if (item.product_id) {
+              productInternalId = await this._resolveProductId(
+                knex,
+                item.product_id
+              );
+
+              const product = await knex("products")
+                .where({ id: productInternalId, company_id: companyInternalId })
+                .first();
+              if (!product) {
+                const err = new Error("Produto não encontrado nesta empresa.");
+                err.statusCode = 404;
+                err.code = "PRODUCT_NOT_FOUND";
+                throw err;
+              }
+
+              if (description == null) description = product.name;
+              if (unitPrice == null) unitPrice = product.unit_price_cents;
+            }
+
+            return {
+              product_id: productInternalId,
+              description,
+              quantity: item.quantity,
+              unit_price_cents: unitPrice,
+            };
+          })
+        );
+
         const totals = this._calculateTotals(
-          updateData.items,
+          resolvedItems,
           updateData.discount_type || existingQuote.discount_type,
           updateData.discount_value_cents !== undefined
             ? updateData.discount_value_cents
@@ -445,7 +537,7 @@ class QuoteService {
         await transaction("quote_items").where({ quote_id: quoteInternalId }).del();
 
         // Insere novos itens
-        const newItems = updateData.items.map((item, index) => ({
+        const newItems = resolvedItems.map((item, index) => ({
           quote_id: quoteInternalId,
           product_id: item.product_id || null,
           description: item.description,
@@ -711,11 +803,17 @@ class QuoteService {
 
     const results = await knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
+      .join("companies as comp", "q.company_id", "comp.id")
       .where("q.company_id", companyInternalId)
       .where("q.status", "sent")
       .where("q.expiry_date", "<=", futureDate.toISOString().split("T")[0])
       .where("q.expiry_date", ">=", new Date().toISOString().split("T")[0])
-      .select("q.*", "c.name as client_name", "c.email as client_email")
+      .select(
+        "q.*",
+        "comp.public_id as company_public_id",
+        "c.name as client_name",
+        "c.email as client_email"
+      )
       .orderBy("q.expiry_date", "asc");
 
     return results.map(mapQuotePublicId);

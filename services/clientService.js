@@ -2,8 +2,12 @@
 
 function mapClientPublicId(client) {
   if (!client) return null;
-  const { id: _ignored, public_id, ...rest } = client;
-  return { id: public_id, ...rest };
+  const { id: _ignored, public_id, company_public_id, ...rest } = client;
+  return {
+    id: public_id,
+    company_id: company_public_id || client.company_id,
+    ...rest,
+  };
 }
 
 class ClientService {
@@ -62,7 +66,7 @@ class ClientService {
         })
         .returning("*");
       log.info(`Cliente #${client.id} criado para a empresa #${companyId}`);
-      return mapClientPublicId(client);
+      return this.getClientById(fastify, companyId, client.public_id);
     } catch (error) {
       log.error(error, `Erro ao criar cliente para a empresa #${companyId}`);
 
@@ -89,9 +93,11 @@ class ClientService {
       companyId
     );
     const clients = await fastify
-      .knex("clients")
-      .where({ company_id: companyInternalId })
-      .orderBy("name", "asc");
+      .knex("clients as cl")
+      .join("companies as c", "cl.company_id", "c.id")
+      .where("cl.company_id", companyInternalId)
+      .select("cl.*", "c.public_id as company_public_id")
+      .orderBy("cl.name", "asc");
     return clients.map(mapClientPublicId);
   }
 
@@ -105,8 +111,10 @@ class ClientService {
       clientId
     );
     const client = await fastify
-      .knex("clients")
-      .where({ id: clientInternalId, company_id: companyInternalId })
+      .knex("clients as cl")
+      .join("companies as c", "cl.company_id", "c.id")
+      .where({ "cl.id": clientInternalId, "cl.company_id": companyInternalId })
+      .select("cl.*", "c.public_id as company_public_id")
       .first();
 
     if (!client) {
@@ -135,7 +143,7 @@ class ClientService {
         );
 
       log.info(`Cliente #${clientId} da empresa #${companyId} atualizado.`);
-      return mapClientPublicId(updatedClient);
+      return this.getClientById(fastify, companyId, updatedClient.public_id);
     } catch (error) {
       if (error.statusCode === 404) throw error;
       log.error(error, `Erro ao atualizar cliente #${clientId}`);
