@@ -8,8 +8,8 @@ function mapQuotePublicId(quote) {
 
 class QuoteService {
   async _resolveCompanyId(knex, identifier) {
-    if (!isNaN(parseInt(identifier))) {
-      return parseInt(identifier);
+    if (/^\d+$/.test(String(identifier))) {
+      return parseInt(identifier, 10);
     }
     const row = await knex("companies")
       .select("id")
@@ -19,8 +19,8 @@ class QuoteService {
   }
 
   async _resolveClientId(knex, identifier) {
-    if (!isNaN(parseInt(identifier))) {
-      return parseInt(identifier);
+    if (/^\d+$/.test(String(identifier))) {
+      return parseInt(identifier, 10);
     }
     const row = await knex("clients")
       .select("id")
@@ -30,8 +30,8 @@ class QuoteService {
   }
 
   async _resolveQuoteId(knex, identifier) {
-    if (!isNaN(parseInt(identifier))) {
-      return parseInt(identifier);
+    if (/^\d+$/.test(String(identifier))) {
+      return parseInt(identifier, 10);
     }
     const row = await knex("quotes")
       .select("id")

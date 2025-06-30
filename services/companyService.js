@@ -25,8 +25,8 @@ class CompanyService {
   constructor() {}
 
   async _resolveCompanyId(knex, identifier) {
-    if (!isNaN(parseInt(identifier))) {
-      return parseInt(identifier);
+    if (/^\d+$/.test(String(identifier))) {
+      return parseInt(identifier, 10);
     }
     const row = await knex("companies")
       .select("id")
@@ -37,8 +37,8 @@ class CompanyService {
 
   async _resolveUserId(knex, identifier) {
     if (!identifier) return null;
-    if (!isNaN(parseInt(identifier))) {
-      return parseInt(identifier);
+    if (/^\d+$/.test(String(identifier))) {
+      return parseInt(identifier, 10);
     }
     const row = await knex("users")
       .select("id")
@@ -304,8 +304,8 @@ class CompanyService {
         .leftJoin("users as u", "c.owner_id", "u.id")
         .select("c.*", "u.public_id as owner_public_id");
 
-      if (!isNaN(parseInt(companyId))) {
-        query.where("c.id", companyId);
+      if (/^\d+$/.test(String(companyId))) {
+        query.where("c.id", parseInt(companyId, 10));
       } else {
         query.where("c.public_id", companyId);
       }

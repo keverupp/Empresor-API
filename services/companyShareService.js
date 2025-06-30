@@ -2,8 +2,8 @@
 
 class CompanyShareService {
   async _resolveCompanyId(knex, identifier) {
-    if (!isNaN(parseInt(identifier))) {
-      return parseInt(identifier);
+    if (/^\d+$/.test(String(identifier))) {
+      return parseInt(identifier, 10);
     }
     const row = await knex("companies")
       .select("id")
