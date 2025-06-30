@@ -2,15 +2,16 @@
 
 function mapProductPublicId(product) {
   if (!product) return null;
-  const { id: _ignored, public_id, ...rest } = product;
-  return { id: public_id, ...rest };
+  const { id: _ignored, public_id, company_public_id, ...rest } = product;
+  return {
+    id: public_id,
+    company_id: company_public_id || product.company_id,
+    ...rest,
+  };
 }
 
 class ProductService {
   async _resolveCompanyId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("companies")
       .select("id")
       .where("public_id", identifier)
@@ -19,9 +20,6 @@ class ProductService {
   }
 
   async _resolveProductId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("products")
       .select("id")
       .where("public_id", identifier)
@@ -68,7 +66,7 @@ class ProductService {
         .returning("*");
 
       log.info(`Produto #${product.id} criado para a empresa #${companyId}`);
-      return mapProductPublicId(product);
+      return this.getProductById(fastify, companyId, product.public_id);
     } catch (error) {
       log.error(error, `Erro ao criar produto para a empresa #${companyId}`);
 
@@ -101,7 +99,10 @@ class ProductService {
     const offset = (page - 1) * pageSize;
 
     // Query principal para buscar produtos
-    let query = knex("products").where({ company_id: companyInternalId });
+    let query = knex("products as p")
+      .join("companies as c", "p.company_id", "c.id")
+      .where("p.company_id", companyInternalId)
+      .select("p.*", "c.public_id as company_public_id");
 
     // Query para contar total de itens
     let countQuery = knex("products")
@@ -111,29 +112,29 @@ class ProductService {
     // Aplicar filtros se fornecidos
     if (name) {
       const nameFilter = `%${name}%`;
-      query = query.where("name", "like", nameFilter);
+      query = query.where("p.name", "like", nameFilter);
       countQuery = countQuery.where("name", "like", nameFilter);
     }
 
     if (sku) {
-      query = query.where("sku", sku);
+      query = query.where("p.sku", sku);
       countQuery = countQuery.where("sku", sku);
     }
 
     if (typeof is_active === "boolean") {
-      query = query.where("is_active", is_active);
+      query = query.where("p.is_active", is_active);
       countQuery = countQuery.where("is_active", is_active);
     }
 
     if (unit) {
-      query = query.where("unit", unit);
+      query = query.where("p.unit", unit);
       countQuery = countQuery.where("unit", unit);
     }
 
     try {
       // Executa as queries
       const products = await query
-        .orderBy("name", "asc")
+        .orderBy("p.name", "asc")
         .limit(pageSize)
         .offset(offset);
 
@@ -173,11 +174,13 @@ class ProductService {
     );
 
     const product = await fastify
-      .knex("products")
+      .knex("products as p")
+      .join("companies as c", "p.company_id", "c.id")
       .where({
-        id: productInternalId,
-        company_id: companyInternalId,
+        "p.id": productInternalId,
+        "p.company_id": companyInternalId,
       })
+      .select("p.*", "c.public_id as company_public_id")
       .first();
 
     if (!product) {
@@ -242,7 +245,7 @@ class ProductService {
         );
 
       log.info(`Produto #${productId} da empresa #${companyId} atualizado.`);
-      return mapProductPublicId(updatedProduct);
+      return this.getProductById(fastify, companyId, updatedProduct.public_id);
     } catch (error) {
       log.error(error, `Erro ao atualizar produto #${productId}`);
 
@@ -335,12 +338,14 @@ class ProductService {
       companyId
     );
     const products = await fastify
-      .knex("products")
+      .knex("products as p")
+      .join("companies as c", "p.company_id", "c.id")
       .where({
-        company_id: companyInternalId,
-        is_active: true,
+        "p.company_id": companyInternalId,
+        "p.is_active": true,
       })
-      .orderBy("name", "asc");
+      .select("p.*", "c.public_id as company_public_id")
+      .orderBy("p.name", "asc");
     return products.map(mapProductPublicId);
   }
 }

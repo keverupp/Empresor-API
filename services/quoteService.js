@@ -2,15 +2,67 @@
 
 function mapQuotePublicId(quote) {
   if (!quote) return null;
-  const { id: _ignored, public_id, ...rest } = quote;
-  return { id: public_id, ...rest };
+  const {
+    id: _ignored,
+    public_id,
+    company_public_id,
+    items,
+    subtotal_cents,
+    discount_value_cents,
+    tax_amount_cents,
+    total_amount_cents,
+    ...rest
+  } = quote;
+
+  const mappedItems = Array.isArray(items)
+    ? items.map((it) => {
+        const {
+          product_public_id,
+          unit_price_cents,
+          total_price_cents,
+          quantity,
+          ...itemRest
+        } = it;
+        return {
+          ...itemRest,
+          product_id: product_public_id || it.product_id,
+          quantity: quantity !== undefined ? parseFloat(quantity) : undefined,
+          unit_price_cents:
+            unit_price_cents !== undefined
+              ? parseInt(unit_price_cents, 10)
+              : undefined,
+          total_price_cents:
+            total_price_cents !== undefined
+              ? parseInt(total_price_cents, 10)
+              : undefined,
+        };
+      })
+    : undefined;
+
+  return {
+    id: public_id,
+    company_id: company_public_id || quote.company_id,
+    subtotal_cents:
+      subtotal_cents !== undefined ? parseInt(subtotal_cents, 10) : undefined,
+    discount_value_cents:
+      discount_value_cents === null || discount_value_cents === undefined
+        ? null
+        : parseInt(discount_value_cents, 10),
+    tax_amount_cents:
+      tax_amount_cents === null || tax_amount_cents === undefined
+        ? null
+        : parseInt(tax_amount_cents, 10),
+    total_amount_cents:
+      total_amount_cents !== undefined
+        ? parseInt(total_amount_cents, 10)
+        : undefined,
+    ...(mappedItems !== undefined ? { items: mappedItems } : {}),
+    ...rest,
+  };
 }
 
 class QuoteService {
   async _resolveCompanyId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("companies")
       .select("id")
       .where("public_id", identifier)
@@ -19,9 +71,6 @@ class QuoteService {
   }
 
   async _resolveClientId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("clients")
       .select("id")
       .where("public_id", identifier)
@@ -30,10 +79,15 @@ class QuoteService {
   }
 
   async _resolveQuoteId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("quotes")
+      .select("id")
+      .where("public_id", identifier)
+      .first();
+    return row ? row.id : null;
+  }
+
+  async _resolveProductId(knex, identifier) {
+    const row = await knex("products")
       .select("id")
       .where("public_id", identifier)
       .first();
@@ -93,9 +147,47 @@ class QuoteService {
       throw error;
     }
 
-    // 3. Cálculo dos totais (esta função já está correta)
+    // Resolve itens convertendo IDs públicos de produtos e preenchendo dados
+    const resolvedItems = await Promise.all(
+      items.map(async (item) => {
+        let productInternalId = null;
+        let description = item.description;
+        let unitPrice = item.unit_price_cents;
+
+        if (item.product_id) {
+          productInternalId = await this._resolveProductId(
+            knex,
+            item.product_id
+          );
+
+          const product = await knex("products")
+            .where({ id: productInternalId, company_id: companyInternalId })
+            .first();
+          if (!product) {
+            const err = new Error(
+              "Produto não encontrado nesta empresa."
+            );
+            err.statusCode = 404;
+            err.code = "PRODUCT_NOT_FOUND";
+            throw err;
+          }
+
+          if (description == null) description = product.name;
+          if (unitPrice == null) unitPrice = product.unit_price_cents;
+        }
+
+        return {
+          product_id: productInternalId,
+          description,
+          quantity: item.quantity,
+          unit_price_cents: unitPrice,
+        };
+      })
+    );
+
+    // 3. Cálculo dos totais usando os itens resolvidos
     const totals = this._calculateTotals(
-      items,
+      resolvedItems,
       discount_type,
       discount_value_cents,
       tax_amount_cents
@@ -131,7 +223,7 @@ class QuoteService {
         })
         .returning("*");
 
-      const quoteItems = items.map((item, index) => ({
+      const quoteItems = resolvedItems.map((item, index) => ({
         quote_id: quote.id,
         product_id: item.product_id || null,
         description: item.description,
@@ -188,12 +280,14 @@ class QuoteService {
 
     const offset = (page - 1) * pageSize;
 
-    // Query principal com JOIN para trazer dados do cliente
+    // Query principal com JOIN para trazer dados do cliente e da empresa
     let query = knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
+      .join("companies as comp", "q.company_id", "comp.id")
       .where("q.company_id", companyInternalId)
       .select(
         "q.*",
+        "comp.public_id as company_public_id",
         knex.raw(`
           json_build_object(
             'id', c.public_id,
@@ -263,9 +357,11 @@ class QuoteService {
       // Para cada orçamento, busca os itens
       const quotesWithItems = await Promise.all(
         quotes.map(async (quote) => {
-          const items = await knex("quote_items")
+          const items = await knex("quote_items as qi")
+            .leftJoin("products as p", "qi.product_id", "p.id")
             .where({ quote_id: quote.id })
-            .orderBy("item_order", "asc");
+            .select("qi.*", "p.public_id as product_public_id")
+            .orderBy("qi.item_order", "asc");
 
           return mapQuotePublicId({
             ...quote,
@@ -311,9 +407,11 @@ class QuoteService {
 
     const quote = await knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
+      .join("companies as comp", "q.company_id", "comp.id")
       .where({ "q.id": quoteInternalId, "q.company_id": companyInternalId })
       .select(
         "q.*",
+        "comp.public_id as company_public_id",
         knex.raw(`
           json_build_object(
             'id', c.public_id,
@@ -357,9 +455,11 @@ class QuoteService {
     // --- FIM DA CORREÇÃO DEFINITIVA ---
 
     // Busca os itens do orçamento
-    const items = await knex("quote_items")
+    const items = await knex("quote_items as qi")
+      .leftJoin("products as p", "qi.product_id", "p.id")
       .where({ quote_id: quoteInternalId })
-      .orderBy("item_order", "asc");
+      .select("qi.*", "p.public_id as product_public_id")
+      .orderBy("qi.item_order", "asc");
 
     // Retorna o objeto com os valores devidamente convertidos
     return mapQuotePublicId({
@@ -427,8 +527,43 @@ class QuoteService {
 
       // Se houver novos itens, recalcula os totais
       if (updateData.items) {
+        const resolvedItems = await Promise.all(
+          updateData.items.map(async (item) => {
+            let productInternalId = null;
+            let description = item.description;
+            let unitPrice = item.unit_price_cents;
+
+            if (item.product_id) {
+              productInternalId = await this._resolveProductId(
+                knex,
+                item.product_id
+              );
+
+              const product = await knex("products")
+                .where({ id: productInternalId, company_id: companyInternalId })
+                .first();
+              if (!product) {
+                const err = new Error("Produto não encontrado nesta empresa.");
+                err.statusCode = 404;
+                err.code = "PRODUCT_NOT_FOUND";
+                throw err;
+              }
+
+              if (description == null) description = product.name;
+              if (unitPrice == null) unitPrice = product.unit_price_cents;
+            }
+
+            return {
+              product_id: productInternalId,
+              description,
+              quantity: item.quantity,
+              unit_price_cents: unitPrice,
+            };
+          })
+        );
+
         const totals = this._calculateTotals(
-          updateData.items,
+          resolvedItems,
           updateData.discount_type || existingQuote.discount_type,
           updateData.discount_value_cents !== undefined
             ? updateData.discount_value_cents
@@ -445,7 +580,7 @@ class QuoteService {
         await transaction("quote_items").where({ quote_id: quoteInternalId }).del();
 
         // Insere novos itens
-        const newItems = updateData.items.map((item, index) => ({
+        const newItems = resolvedItems.map((item, index) => ({
           quote_id: quoteInternalId,
           product_id: item.product_id || null,
           description: item.description,
@@ -711,11 +846,17 @@ class QuoteService {
 
     const results = await knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
+      .join("companies as comp", "q.company_id", "comp.id")
       .where("q.company_id", companyInternalId)
       .where("q.status", "sent")
       .where("q.expiry_date", "<=", futureDate.toISOString().split("T")[0])
       .where("q.expiry_date", ">=", new Date().toISOString().split("T")[0])
-      .select("q.*", "c.name as client_name", "c.email as client_email")
+      .select(
+        "q.*",
+        "comp.public_id as company_public_id",
+        "c.name as client_name",
+        "c.email as client_email"
+      )
       .orderBy("q.expiry_date", "asc");
 
     return results.map(mapQuotePublicId);

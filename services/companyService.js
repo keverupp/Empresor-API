@@ -25,9 +25,6 @@ class CompanyService {
   constructor() {}
 
   async _resolveCompanyId(knex, identifier) {
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("companies")
       .select("id")
       .where("public_id", identifier)
@@ -37,9 +34,6 @@ class CompanyService {
 
   async _resolveUserId(knex, identifier) {
     if (!identifier) return null;
-    if (/^\d+$/.test(String(identifier))) {
-      return parseInt(identifier, 10);
-    }
     const row = await knex("users")
       .select("id")
       .where("public_id", identifier)
@@ -304,11 +298,7 @@ class CompanyService {
         .leftJoin("users as u", "c.owner_id", "u.id")
         .select("c.*", "u.public_id as owner_public_id");
 
-      if (/^\d+$/.test(String(companyId))) {
-        query.where("c.id", parseInt(companyId, 10));
-      } else {
-        query.where("c.public_id", companyId);
-      }
+      query.where("c.public_id", companyId);
 
       const company = await query.first();
 

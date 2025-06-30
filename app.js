@@ -9,6 +9,9 @@ const fastify = Fastify({
     level: process.env.LOG_LEVEL || "info",
     // pino-pretty é configurado no script `npm run dev`
   },
+  // Aumenta o tempo limite padrão para inicialização dos plugins
+  // evitando erros de "Plugin did not start in time" em ambientes lentos
+  pluginTimeout: 20000,
 });
 
 const start = async () => {
