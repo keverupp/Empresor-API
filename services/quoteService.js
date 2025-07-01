@@ -8,6 +8,9 @@ function mapQuotePublicId(quote) {
     company_public_id,
     client_public_id,
     created_by_user_public_id,
+    company_id: _company_internal_id, // ← Extraído para não sobrescrever
+    client_id: _client_internal_id, // ← Extraído para não sobrescrever
+    created_by_user_id: _user_internal_id, // ← Extraído para não sobrescrever
     items,
     subtotal_cents,
     discount_value_cents,
@@ -20,6 +23,7 @@ function mapQuotePublicId(quote) {
     ? items.map((it) => {
         const {
           product_public_id,
+          product_id: _product_internal_id, // ← Extraído para não sobrescrever
           unit_price_cents,
           total_price_cents,
           quantity,
@@ -27,7 +31,7 @@ function mapQuotePublicId(quote) {
         } = it;
         return {
           ...itemRest,
-          product_id: product_public_id || it.product_id,
+          product_id: String(product_public_id || _product_internal_id),
           quantity: quantity !== undefined ? parseFloat(quantity) : undefined,
           unit_price_cents:
             unit_price_cents !== undefined
@@ -43,16 +47,9 @@ function mapQuotePublicId(quote) {
 
   return {
     id: public_id,
-    company_id:
-      (company_public_id || quote.company_id) &&
-      String(company_public_id || quote.company_id),
-    client_id:
-      (client_public_id || quote.client_id) &&
-      String(client_public_id || quote.client_id),
-    created_by_user_id:
-      created_by_user_public_id !== undefined
-        ? String(created_by_user_public_id)
-        : String(quote.created_by_user_id),
+    company_id: String(company_public_id || _company_internal_id),
+    client_id: String(client_public_id || _client_internal_id),
+    created_by_user_id: String(created_by_user_public_id || _user_internal_id),
     subtotal_cents:
       subtotal_cents !== undefined ? parseInt(subtotal_cents, 10) : undefined,
     discount_value_cents:
@@ -175,9 +172,7 @@ class QuoteService {
             .where({ id: productInternalId, company_id: companyInternalId })
             .first();
           if (!product) {
-            const err = new Error(
-              "Produto não encontrado nesta empresa."
-            );
+            const err = new Error("Produto não encontrado nesta empresa.");
             err.statusCode = 404;
             err.code = "PRODUCT_NOT_FOUND";
             throw err;
@@ -499,11 +494,7 @@ class QuoteService {
     const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
 
     // Verifica se o orçamento existe e pertence à empresa
-    const existingQuote = await this.getQuoteById(
-      fastify,
-      companyId,
-      quoteId
-    );
+    const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
 
     // Verifica se o orçamento pode ser editado
     if (["accepted", "invoiced"].includes(existingQuote.status)) {
@@ -594,7 +585,9 @@ class QuoteService {
         quoteUpdateData.total_amount_cents = totals.total;
 
         // Remove itens antigos
-        await transaction("quote_items").where({ quote_id: quoteInternalId }).del();
+        await transaction("quote_items")
+          .where({ quote_id: quoteInternalId })
+          .del();
 
         // Insere novos itens
         const newItems = resolvedItems.map((item, index) => ({
@@ -713,7 +706,9 @@ class QuoteService {
 
     try {
       // Remove primeiro os itens (devido à foreign key)
-      await transaction("quote_items").where({ quote_id: quoteInternalId }).del();
+      await transaction("quote_items")
+        .where({ quote_id: quoteInternalId })
+        .del();
 
       // Remove o orçamento
       const result = await transaction("quotes")

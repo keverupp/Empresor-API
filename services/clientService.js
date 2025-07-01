@@ -2,12 +2,17 @@
 
 function mapClientPublicId(client) {
   if (!client) return null;
-  const { id: _ignored, public_id, company_public_id, ...rest } = client;
+  const {
+    id: _ignored,
+    public_id,
+    company_public_id,
+    company_id: _company_internal_id,
+    ...rest
+  } = client;
+
   return {
     id: public_id,
-    company_id:
-      (company_public_id || client.company_id) &&
-      String(company_public_id || client.company_id),
+    company_id: String(company_public_id || _company_internal_id),
     ...rest,
   };
 }
@@ -28,6 +33,7 @@ class ClientService {
       .first();
     return row ? row.id : null;
   }
+
   async createClient(fastify, companyId, clientData) {
     const { knex, log } = fastify;
     const { document_number } = clientData;
@@ -88,12 +94,14 @@ class ClientService {
       fastify.knex,
       companyId
     );
+
     const clients = await fastify
       .knex("clients as cl")
       .join("companies as c", "cl.company_id", "c.id")
       .where("cl.company_id", companyInternalId)
       .select("cl.*", "c.public_id as company_public_id")
       .orderBy("cl.name", "asc");
+
     return clients.map(mapClientPublicId);
   }
 

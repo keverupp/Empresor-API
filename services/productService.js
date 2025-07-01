@@ -2,12 +2,16 @@
 
 function mapProductPublicId(product) {
   if (!product) return null;
-  const { id: _ignored, public_id, company_public_id, ...rest } = product;
+  const {
+    id: _ignored,
+    public_id,
+    company_public_id,
+    company_id: _company_internal_id,
+    ...rest
+  } = product;
   return {
     id: public_id,
-    company_id:
-      (company_public_id || product.company_id) &&
-      String(company_public_id || product.company_id),
+    company_id: String(company_public_id || _company_internal_id),
     ...rest,
   };
 }
@@ -217,7 +221,7 @@ class ProductService {
       const existingProduct = await knex("products")
         .where({
           company_id: companyInternalId,
-        sku: sku,
+          sku: sku,
         })
         .whereNot({ id: productInternalId })
         .first();

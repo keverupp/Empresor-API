@@ -1,7 +1,6 @@
 "use strict";
 
 module.exports = async function (fastify, opts) {
-  // O autoload já disponibiliza 'services' e 'schemas' no objeto fastify
   const { services, schemas, knex } = fastify;
 
   // Hook de permissão para Clientes: Verifica se o usuário é proprietário OU tem um compartilhamento ativo.
@@ -46,7 +45,7 @@ module.exports = async function (fastify, opts) {
             "Você não tem permissão para acessar os clientes desta empresa."
           );
           error.statusCode = 403;
-          reply.code(403).send(error);
+          throw error;
         }
       },
     ],
