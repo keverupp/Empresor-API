@@ -1,3 +1,4 @@
+// routes/users/index.js (ATUALIZADO)
 "use strict";
 
 const {
@@ -9,13 +10,10 @@ const UserService = require("../../services/userService");
 
 module.exports = async function (fastify, opts) {
   // Hook de autenticação para todas as rotas neste plugin
-  // Certifique-se de que fastify.authenticate está definido (ex: por um plugin authHook.js)
   if (!fastify.authenticate) {
     fastify.log.error(
       "Hook fastify.authenticate não está definido! As rotas de /users/me não serão protegidas."
     );
-    // Você pode querer lançar um erro aqui para impedir o boot se a autenticação for crítica.
-    // throw new Error("fastify.authenticate is required for /users routes");
   }
   const preHandler = fastify.authenticate ? [fastify.authenticate] : [];
 
@@ -44,9 +42,7 @@ module.exports = async function (fastify, opts) {
     "/me",
     { schema: getUserMeSchema, preHandler },
     async (request, reply) => {
-      // request.user é populado pelo hook fastify.authenticate
       if (!request.user || !request.user.userId) {
-        // Esta verificação é uma segurança extra, o hook authenticate já deveria ter barrado
         return reply.code(401).send({
           statusCode: 401,
           error: "Unauthorized",
@@ -106,8 +102,17 @@ module.exports = async function (fastify, opts) {
         request.user.userId
       );
       if (result) {
-        reply.send(result); // O serviço envia { message: '...' }
+        reply.send(result);
       }
     }
   );
+
+  // REGISTRAR AS ROTAS DE NOTIFICAÇÕES
+  // As rotas de notificações serão acessíveis em:
+  // GET /api/users/me/notifications
+  // GET /api/users/me/notifications/summary
+  // GET /api/users/me/notifications/:notificationId
+  // POST /api/users/me/notifications/mark-read
+  // POST /api/users/me/notifications/mark-all-read
+  await fastify.register(require("./notifications"));
 };
