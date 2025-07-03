@@ -16,7 +16,8 @@ function mapCompanyPublicId(company) {
   } = company;
   return {
     id: public_id,
-    owner_id: (owner_public_id || owner_id) && String(owner_public_id || owner_id),
+    owner_id:
+      (owner_public_id || owner_id) && String(owner_public_id || owner_id),
     ...rest,
   };
 }
@@ -68,8 +69,29 @@ class CompanyService {
     const validationCode = fastify.cryptoUtils.generateNumericCode(6);
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
 
-    // Salva o novo código e a data de expiração no banco de dados.
-    await fastify.knex("companies").where("id", company.id).update({
+    // *** CORREÇÃO: Resolve o ID interno da empresa antes do update ***
+    // Se company.id é um UUID (public_id), precisamos buscar o ID interno
+    let companyInternalId;
+
+    // Verifica se company.id é um UUID (contém hífens) ou um ID inteiro
+    if (typeof company.id === "string" && company.id.includes("-")) {
+      // É um UUID (public_id), precisa resolver o ID interno
+      companyInternalId = await this._resolveCompanyId(
+        fastify.knex,
+        company.id
+      );
+      if (!companyInternalId) {
+        throw new Error(
+          "Empresa não encontrada para envio de e-mail de verificação."
+        );
+      }
+    } else {
+      // É um ID interno, pode usar diretamente
+      companyInternalId = company.id;
+    }
+
+    // Salva o novo código e a data de expiração no banco de dados usando o ID interno
+    await fastify.knex("companies").where("id", companyInternalId).update({
       validation_code: validationCode,
       validation_code_expires_at: expiresAt,
     });
@@ -142,12 +164,7 @@ class CompanyService {
         await this._sendVerificationEmail(fastify, createdCompany);
       }
 
-
-      return this.getCompanyById(
-        fastify,
-        userId,
-        createdCompany.public_id
-      );
+      return this.getCompanyById(fastify, userId, createdCompany.public_id);
     } catch (error) {
       fastify.log.error(error, "Erro ao criar empresa no banco de dados");
 
@@ -200,7 +217,6 @@ class CompanyService {
       .returning("*");
 
     return this.getCompanyById(fastify, userId, companyId);
-
   }
 
   /**
@@ -242,10 +258,7 @@ class CompanyService {
     let countQuery = fastify.knex("companies as c").count("c.id as total");
 
     if (owner_id && owner_id !== String(userId)) {
-      const ownerInternalId = await this._resolveUserId(
-        fastify.knex,
-        owner_id
-      );
+      const ownerInternalId = await this._resolveUserId(fastify.knex, owner_id);
       if (ownerInternalId) {
         query = query.where("c.owner_id", ownerInternalId);
         countQuery = countQuery.where("c.owner_id", ownerInternalId);
@@ -337,7 +350,6 @@ class CompanyService {
         .update(updatePayload)
         .returning("*");
       return this.getCompanyById(fastify, userId, companyId);
-
     } catch (error) {
       fastify.log.error(error, `Erro ao atualizar empresa ID: ${companyId}`);
       if (
