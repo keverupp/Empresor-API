@@ -44,4 +44,4 @@ EXPOSE 3001
 
 # Set entrypoint and command
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["node", "server.js"]
+CMD ["node", "app.js"]

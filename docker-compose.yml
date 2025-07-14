@@ -1,11 +1,12 @@
 version: '3.8'
 
 services:
-  empresor-api:
+  fastify-api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: empresor-api
+    image: fastify-api-v2:latest  # Nome diferente para evitar cache
+    container_name: fastify-api-v2
     restart: unless-stopped
     ports:
       - "3001:3001"
