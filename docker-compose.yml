@@ -56,9 +56,6 @@ services:
       - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-100}
       - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-900000}
       
-      # Database Migration/Seeds
-      - FORCE_SEEDS=${FORCE_SEEDS:-false}
-      
       # Puppeteer Configuration
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
       - PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-accelerated-2d-canvas,--no-first-run,--no-zygote,--disable-gpu
