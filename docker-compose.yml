@@ -31,6 +31,14 @@ services:
       - EMAIL_FROM=${EMAIL_FROM}
       - EMAIL_SECURE=${EMAIL_SECURE:-false}
       
+      # Frontend URL
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      
+      # Google OAuth Configuration
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_BACKEND_REDIRECT_URI=${GOOGLE_BACKEND_REDIRECT_URI}
+      
       # Cloudinary Configuration
       - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
