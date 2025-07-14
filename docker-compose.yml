@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  fastify-api:
+  empresor-api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fastify-api
+    container_name: empresor-api
     restart: unless-stopped
     ports:
       - "3001:3001"
