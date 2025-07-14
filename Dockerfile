@@ -27,6 +27,10 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy application code
 COPY . .
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S fastify -u 1001
@@ -38,5 +42,6 @@ USER fastify
 # Expose port
 EXPOSE 3001
 
-# Start the application
+# Set entrypoint and command
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.js"]
