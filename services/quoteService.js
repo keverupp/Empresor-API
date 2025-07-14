@@ -202,7 +202,7 @@ class QuoteService {
     const transaction = await knex.transaction();
 
     try {
-      // 4. Inserção no Banco de Dados com a Lógica Corrigida
+      // 4. Inserção no Banco de Dados
       const [quote] = await transaction("quotes")
         .insert({
           company_id: companyInternalId,
@@ -216,14 +216,9 @@ class QuoteService {
           internal_notes,
           terms_and_conditions_content,
           subtotal_cents: totals.subtotal,
-
-          // --- LÓGICA CORRIGIDA E FINAL ---
           discount_type: discount_type || null,
-          // Usa o valor do desconto JÁ CALCULADO pela função _calculateTotals
           discount_value_cents: totals.discount,
           tax_amount_cents: tax_amount_cents ?? null,
-          // --- FIM DA CORREÇÃO ---
-
           total_amount_cents: totals.total,
           currency,
         })
@@ -243,8 +238,8 @@ class QuoteService {
       await transaction.commit();
       log.info(`Orçamento #${quote.id} criado para a empresa #${companyId}`);
 
-      // Retorna o orçamento completo
-      return this.getQuoteById(fastify, companyId, quote.id);
+      // CORREÇÃO: Usar quote.public_id (UUID) em vez de quote.id (interno)
+      return this.getQuoteById(fastify, companyId, quote.public_id);
     } catch (error) {
       await transaction.rollback();
       log.error(error, `Erro ao criar orçamento para a empresa #${companyId}`);

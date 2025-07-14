@@ -1,62 +1,84 @@
+// routes/companies/clients.js (ATUALIZADO)
 "use strict";
 
 module.exports = async function (fastify, opts) {
-  const { services, schemas, knex } = fastify;
+  const { services, schemas } = fastify;
 
-  // Hook de permissão para Clientes: Verifica se o usuário é proprietário OU tem um compartilhamento ativo.
-  const clientsPreHandler = {
+  // PreHandler base com autenticação e verificação de permissões
+  const basePreHandler = {
     preHandler: [
       fastify.authenticate,
-      async function (request, reply) {
-        const { companyId } = request.params;
-        const { userId } = request.user;
+      async (request, reply) => {
+        const companyId = request.params.companyId;
+        const userId = request.user.userId;
 
         try {
-          // 1. Tenta verificar se o usuário é o proprietário da empresa.
-          // O método getCompanyById já contém a lógica que lança um erro se não for.
-          await services.company.getCompanyById(fastify, userId, companyId);
-          // Se o código continuar, significa que o usuário é o proprietário. Permissão concedida.
-          return;
-        } catch (ownerError) {
-          // 2. Se não for o proprietário (o `catch` foi acionado), verifica se há um compartilhamento ativo.
-          if (ownerError.statusCode === 403 || ownerError.statusCode === 404) {
-            const companyInternalId = await services.company._resolveCompanyId(
-              knex,
-              companyId
-            );
-            const share = await knex("company_shares")
-              .where({
-                company_id: companyInternalId,
-                shared_with_user_id: userId,
-                status: "active",
-              })
-              .first();
+          // 1. Verifica se o usuário é proprietário da empresa
+          const company = await fastify
+            .knex("companies")
+            .select("owner_id")
+            .where("public_id", companyId)
+            .first();
 
-            if (share) {
-              // Usuário tem um compartilhamento ativo. Permissão concedida.
-              // Futuramente, você pode adicionar lógicas mais finas aqui, baseadas no objeto `share.permissions`.
-              // Ex: if (!share.permissions.can_view_clients) { throw new Error("Você não tem permissão para ver clientes."); }
-              return;
-            }
+          if (!company) {
+            const error = new Error("Empresa não encontrada.");
+            error.statusCode = 404;
+            throw error;
           }
 
-          // 3. Se não for proprietário e não tiver compartilhamento, nega o acesso.
+          if (company.owner_id === userId) {
+            return; // Proprietário sempre tem acesso
+          }
+
+          // 2. Se não for proprietário, verifica compartilhamentos
+          const share = await fastify
+            .knex("company_shares")
+            .where("company_id", company.id)
+            .where("shared_with_user_id", userId)
+            .where("status", "active")
+            .first();
+
+          if (share) {
+            return; // Usuário com compartilhamento ativo
+          }
+
+          // 3. Se não for proprietário e não tiver compartilhamento, nega o acesso
           const error = new Error(
             "Você não tem permissão para acessar os clientes desta empresa."
           );
           error.statusCode = 403;
           throw error;
+        } catch (error) {
+          if (error.statusCode) throw error;
+          fastify.log.error(error, "Erro na verificação de permissões");
+          throw new Error("Erro interno na verificação de permissões.");
         }
       },
     ],
   };
 
-  // --- DEFINIÇÃO DAS ROTAS DE CRUD PARA CLIENTES ---
+  // PreHandler para operações de leitura (permite acesso mesmo com empresa inativa para proprietários)
+  const readPreHandler = {
+    preHandler: [
+      ...basePreHandler.preHandler,
+      fastify.companyStatus.checkCompanyForReadsAndWrites(),
+    ],
+  };
 
-  // POST /api/companies/:companyId/clients
+  // PreHandler para operações de escrita (bloqueia se empresa inativa)
+  const writePreHandler = {
+    preHandler: [
+      ...basePreHandler.preHandler,
+      fastify.companyStatus.requireActiveCompanyForWrites(),
+    ],
+  };
+
+  // --- ROTAS DE CRUD PARA CLIENTES ---
+
+  // POST /api/companies/:companyId/clients (OPERAÇÃO DE ESCRITA)
   fastify.post(
     "/:companyId/clients",
-    { schema: schemas.createClientSchema, ...clientsPreHandler },
+    { schema: schemas.createClientSchema, ...writePreHandler },
     async (request, reply) => {
       const newClient = await services.client.createClient(
         fastify,
@@ -67,10 +89,10 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // GET /api/companies/:companyId/clients
+  // GET /api/companies/:companyId/clients (OPERAÇÃO DE LEITURA)
   fastify.get(
     "/:companyId/clients",
-    { schema: schemas.listClientsSchema, ...clientsPreHandler },
+    { schema: schemas.listClientsSchema, ...readPreHandler },
     async (request, reply) => {
       const clients = await services.client.listClients(
         fastify,
@@ -80,10 +102,10 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // GET /api/companies/:companyId/clients/:clientId
+  // GET /api/companies/:companyId/clients/:clientId (OPERAÇÃO DE LEITURA)
   fastify.get(
     "/:companyId/clients/:clientId",
-    { schema: schemas.getClientByIdSchema, ...clientsPreHandler },
+    { schema: schemas.getClientByIdSchema, ...readPreHandler },
     async (request, reply) => {
       const client = await services.client.getClientById(
         fastify,
@@ -94,10 +116,10 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // PUT /api/companies/:companyId/clients/:clientId
+  // PUT /api/companies/:companyId/clients/:clientId (OPERAÇÃO DE ESCRITA)
   fastify.put(
     "/:companyId/clients/:clientId",
-    { schema: schemas.updateClientSchema, ...clientsPreHandler },
+    { schema: schemas.updateClientSchema, ...writePreHandler },
     async (request, reply) => {
       const updatedClient = await services.client.updateClient(
         fastify,
@@ -109,10 +131,10 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // DELETE /api/companies/:companyId/clients/:clientId
+  // DELETE /api/companies/:companyId/clients/:clientId (OPERAÇÃO DE ESCRITA)
   fastify.delete(
     "/:companyId/clients/:clientId",
-    { schema: schemas.deleteClientSchema, ...clientsPreHandler },
+    { schema: schemas.deleteClientSchema, ...writePreHandler },
     async (request, reply) => {
       const result = await services.client.deleteClient(
         fastify,

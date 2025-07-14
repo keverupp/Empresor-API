@@ -1,138 +1,20 @@
+// routes/companies/quotes.js - ARQUIVO COMPLETO CORRIGIDO
 "use strict";
 
 module.exports = async function (fastify, opts) {
-  const { services, schemas, knex } = fastify;
-
-  // Hook de permissão para Orçamentos: Verifica acesso à empresa e limites do plano
-  const quotesPreHandler = {
-    preHandler: [
-      fastify.authenticate,
-      async function (request, reply) {
-        const { companyId } = request.params;
-        const { userId } = request.user;
-
-        try {
-          // 1. Verifica se o usuário é proprietário da empresa
-          let isOwner = false;
-          let userPlan = null;
-
-          try {
-            await services.company.getCompanyById(fastify, userId, companyId);
-            isOwner = true;
-
-            // Busca o plano apenas se for proprietário
-            userPlan = await services.permission.getUserPlan(fastify, userId);
-          } catch (ownerError) {
-            // Se não for proprietário, verifica compartilhamento
-            if (
-              ownerError.statusCode === 403 ||
-              ownerError.statusCode === 404
-            ) {
-              const companyInternalId = await services.company._resolveCompanyId(
-                knex,
-                companyId
-              );
-              const share = await knex("company_shares")
-                .where({
-                  company_id: companyInternalId,
-                  shared_with_user_id: userId,
-                  status: "active",
-                })
-                .first();
-
-              if (!share) {
-                const error = new Error(
-                  "Você não tem permissão para acessar os orçamentos desta empresa."
-                );
-                error.statusCode = 403;
-                throw error;
-              }
-
-              // TODO: Verificar permissões específicas do compartilhamento
-              // Ex: if (!share.permissions.can_manage_quotes) { throw error; }
-            } else {
-              throw ownerError;
-            }
-          }
-
-          // 2. Para proprietários, verifica limites do plano na criação
-          if (isOwner && request.method === "POST") {
-            if (!userPlan) {
-              const error = new Error("Usuário não possui um plano ativo.");
-              error.statusCode = 403;
-              throw error;
-            }
-
-            // Verifica limite de orçamentos por mês
-            const currentMonthQuotes = await services.quote.getQuoteCount(
-              fastify,
-              companyId,
-              "month"
-            );
-
-            const limitExceeded = services.permission.checkLimit(
-              userPlan,
-              "max_quotes_per_month",
-              currentMonthQuotes
-            );
-
-            if (limitExceeded) {
-              const error = new Error(
-                `Limite de orçamentos por mês atingido para seu plano atual (${
-                  userPlan.features?.max_quotes_per_month || 0
-                }). Considere fazer upgrade para criar mais orçamentos.`
-              );
-              error.statusCode = 422;
-              error.code = "PLAN_LIMIT_EXCEEDED";
-              throw error;
-            }
-
-            // Verifica limite de itens por orçamento
-            if (request.body && request.body.items) {
-              const itemCount = request.body.items.length;
-              const itemLimitExceeded = services.permission.checkLimit(
-                userPlan,
-                "max_items_per_quote",
-                itemCount - 1 // -1 porque checkLimit usa >=
-              );
-
-              if (itemLimitExceeded) {
-                const error = new Error(
-                  `Limite de itens por orçamento atingido para seu plano atual (${
-                    userPlan.features?.max_items_per_quote || 0
-                  }). Considere fazer upgrade ou reduza o número de itens.`
-                );
-                error.statusCode = 422;
-                error.code = "PLAN_LIMIT_EXCEEDED";
-                throw error;
-              }
-            }
-          }
-
-          return;
-        } catch (error) {
-          reply.code(error.statusCode || 500).send({
-            statusCode: error.statusCode || 500,
-            error: error.code || "FORBIDDEN",
-            message: error.message,
-          });
-        }
-      },
-    ],
-  };
+  const { services, schemas } = fastify;
 
   // Helper para tratamento de erros dos serviços
   async function handleServiceCall(reply, serviceFn, ...args) {
     try {
-      const result = await serviceFn(fastify, ...args);
+      const result = await serviceFn(...args);
       return result;
     } catch (error) {
-      fastify.log.error(error, "[QuoteRoutes] Erro no serviço QuoteService");
+      fastify.log.error(error, "Erro no serviço de orçamentos");
       const statusCode = error.statusCode || 500;
       const errorCode =
         error.code ||
         (statusCode === 500 ? "InternalServerError" : "BadRequest");
-
       reply.code(statusCode).send({
         statusCode,
         error: errorCode,
@@ -142,19 +24,89 @@ module.exports = async function (fastify, opts) {
     }
   }
 
-  // --- ROTAS CRUD PARA ORÇAMENTOS ---
+  // PreHandler base com autenticação e verificação de permissões
+  const basePreHandler = {
+    preHandler: [
+      fastify.authenticate,
+      async (request, reply) => {
+        const companyId = request.params.companyId;
+        const userId = request.user.userId;
 
-  // POST /api/companies/:companyId/quotes
+        try {
+          // 1. Verifica se o usuário é proprietário da empresa
+          const company = await fastify
+            .knex("companies")
+            .select("id", "owner_id")
+            .where("public_id", companyId)
+            .first();
+
+          if (!company) {
+            const error = new Error("Empresa não encontrada.");
+            error.statusCode = 404;
+            throw error;
+          }
+
+          if (company.owner_id === userId) {
+            return; // Proprietário sempre tem acesso
+          }
+
+          // 2. Se não for proprietário, verifica compartilhamentos
+          const share = await fastify
+            .knex("company_shares")
+            .where("company_id", company.id)
+            .where("shared_with_user_id", userId)
+            .where("status", "active")
+            .first();
+
+          if (share) {
+            return; // Usuário com compartilhamento ativo
+          }
+
+          // 3. Se não for proprietário e não tiver compartilhamento, nega o acesso
+          const error = new Error(
+            "Você não tem permissão para acessar os orçamentos desta empresa."
+          );
+          error.statusCode = 403;
+          throw error;
+        } catch (error) {
+          if (error.statusCode) throw error;
+          fastify.log.error(error, "Erro na verificação de permissões");
+          throw new Error("Erro interno na verificação de permissões.");
+        }
+      },
+    ],
+  };
+
+  // PreHandler para operações de leitura (permite acesso mesmo com empresa inativa para proprietários)
+  const readPreHandler = {
+    preHandler: [
+      ...basePreHandler.preHandler,
+      fastify.companyStatus.checkCompanyForReadsAndWrites(),
+    ],
+  };
+
+  // PreHandler para operações de escrita (bloqueia se empresa inativa)
+  const writePreHandler = {
+    preHandler: [
+      ...basePreHandler.preHandler,
+      fastify.companyStatus.requireActiveCompanyForWrites(),
+    ],
+  };
+
+  // --- ROTAS DE CRUD PARA ORÇAMENTOS ---
+
+  // POST /api/companies/:companyId/quotes (OPERAÇÃO DE ESCRITA)
   fastify.post(
     "/:companyId/quotes",
-    { schema: schemas.createQuoteSchema, ...quotesPreHandler },
+    { schema: schemas.createQuoteSchema, ...writePreHandler },
     async (request, reply) => {
       const newQuote = await handleServiceCall(
         reply,
         services.quote.createQuote.bind(services.quote),
-        request.params.companyId,
-        request.user.userId,
-        request.body
+        fastify, // 1º: fastify instance
+        request.params.companyId, // 2º: companyId
+        request.user.userId, // 3º: userId
+        request.body // 4º: quoteData
       );
       if (newQuote) {
         reply.code(201).send(newQuote);
@@ -162,16 +114,17 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // GET /api/companies/:companyId/quotes
+  // GET /api/companies/:companyId/quotes (OPERAÇÃO DE LEITURA)
   fastify.get(
     "/:companyId/quotes",
-    { schema: schemas.listQuotesSchema, ...quotesPreHandler },
+    { schema: schemas.listQuotesSchema, ...readPreHandler },
     async (request, reply) => {
       const quotes = await handleServiceCall(
         reply,
         services.quote.listQuotes.bind(services.quote),
-        request.params.companyId,
-        request.query
+        fastify, // 1º: fastify instance
+        request.params.companyId, // 2º: companyId
+        request.query // 3º: queryParams
       );
       if (quotes) {
         reply.send(quotes);
@@ -179,16 +132,17 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // GET /api/companies/:companyId/quotes/:quoteId
+  // GET /api/companies/:companyId/quotes/:quoteId (OPERAÇÃO DE LEITURA)
   fastify.get(
     "/:companyId/quotes/:quoteId",
-    { schema: schemas.getQuoteByIdSchema, ...quotesPreHandler },
+    { schema: schemas.getQuoteByIdSchema, ...readPreHandler },
     async (request, reply) => {
       const quote = await handleServiceCall(
         reply,
         services.quote.getQuoteById.bind(services.quote),
-        request.params.companyId,
-        request.params.quoteId
+        fastify, // 1º: fastify instance
+        request.params.companyId, // 2º: companyId
+        request.params.quoteId // 3º: quoteId
       );
       if (quote) {
         reply.send(quote);
@@ -196,17 +150,18 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // PUT /api/companies/:companyId/quotes/:quoteId
+  // PUT /api/companies/:companyId/quotes/:quoteId (OPERAÇÃO DE ESCRITA)
   fastify.put(
     "/:companyId/quotes/:quoteId",
-    { schema: schemas.updateQuoteSchema, ...quotesPreHandler },
+    { schema: schemas.updateQuoteSchema, ...writePreHandler },
     async (request, reply) => {
       const updatedQuote = await handleServiceCall(
         reply,
         services.quote.updateQuote.bind(services.quote),
-        request.params.companyId,
-        request.params.quoteId,
-        request.body
+        fastify, // 1º: fastify instance
+        request.params.companyId, // 2º: companyId
+        request.params.quoteId, // 3º: quoteId
+        request.body // 4º: updateData
       );
       if (updatedQuote) {
         reply.send(updatedQuote);
@@ -214,17 +169,18 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // PUT /api/companies/:companyId/quotes/:quoteId/status
+  // PUT /api/companies/:companyId/quotes/:quoteId/status (OPERAÇÃO DE ESCRITA)
   fastify.put(
     "/:companyId/quotes/:quoteId/status",
-    { schema: schemas.updateQuoteStatusSchema, ...quotesPreHandler },
+    { schema: schemas.updateQuoteStatusSchema, ...writePreHandler },
     async (request, reply) => {
       const updatedQuote = await handleServiceCall(
         reply,
         services.quote.updateQuoteStatus.bind(services.quote),
-        request.params.companyId,
-        request.params.quoteId,
-        request.body.status
+        fastify, // 1º: fastify instance
+        request.params.companyId, // 2º: companyId
+        request.params.quoteId, // 3º: quoteId
+        request.body.status // 4º: status
       );
       if (updatedQuote) {
         reply.send(updatedQuote);
@@ -232,16 +188,17 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // DELETE /api/companies/:companyId/quotes/:quoteId
+  // DELETE /api/companies/:companyId/quotes/:quoteId (OPERAÇÃO DE ESCRITA)
   fastify.delete(
     "/:companyId/quotes/:quoteId",
-    { schema: schemas.deleteQuoteSchema, ...quotesPreHandler },
+    { schema: schemas.deleteQuoteSchema, ...writePreHandler },
     async (request, reply) => {
       const result = await handleServiceCall(
         reply,
         services.quote.deleteQuote.bind(services.quote),
-        request.params.companyId,
-        request.params.quoteId
+        fastify, // 1º: fastify instance
+        request.params.companyId, // 2º: companyId
+        request.params.quoteId // 3º: quoteId
       );
       if (result) {
         reply.send(result);
@@ -251,7 +208,7 @@ module.exports = async function (fastify, opts) {
 
   // --- ROTAS ADICIONAIS ÚTEIS ---
 
-  // GET /api/companies/:companyId/quotes/stats
+  // GET /api/companies/:companyId/quotes/stats (OPERAÇÃO DE LEITURA)
   fastify.get(
     "/:companyId/quotes/stats",
     {
@@ -262,7 +219,9 @@ module.exports = async function (fastify, opts) {
         security: [{ bearerAuth: [] }],
         params: {
           type: "object",
-          properties: { companyId: { type: "string" } },
+          properties: {
+            companyId: { type: "string" },
+          },
           required: ["companyId"],
         },
         response: {
@@ -279,15 +238,20 @@ module.exports = async function (fastify, opts) {
               acceptance_rate: { type: "integer" },
             },
           },
+          401: { $ref: "ErrorResponse#" },
+          403: { $ref: "ErrorResponse#" },
+          404: { $ref: "ErrorResponse#" },
+          500: { $ref: "ErrorResponse#" },
         },
       },
-      ...quotesPreHandler,
+      ...readPreHandler,
     },
     async (request, reply) => {
       const stats = await handleServiceCall(
         reply,
         services.quote.getQuoteStats.bind(services.quote),
-        request.params.companyId
+        fastify, // 1º: fastify instance
+        request.params.companyId // 2º: companyId
       );
       if (stats) {
         reply.send(stats);
@@ -295,7 +259,7 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // GET /api/companies/:companyId/quotes/expiring
+  // GET /api/companies/:companyId/quotes/expiring (OPERAÇÃO DE LEITURA)
   fastify.get(
     "/:companyId/quotes/expiring",
     {
@@ -336,16 +300,21 @@ module.exports = async function (fastify, opts) {
               },
             },
           },
+          401: { $ref: "ErrorResponse#" },
+          403: { $ref: "ErrorResponse#" },
+          404: { $ref: "ErrorResponse#" },
+          500: { $ref: "ErrorResponse#" },
         },
       },
-      ...quotesPreHandler,
+      ...readPreHandler,
     },
     async (request, reply) => {
       const expiringQuotes = await handleServiceCall(
         reply,
         services.quote.getExpiringQuotes.bind(services.quote),
-        request.params.companyId,
-        request.query.days || 7
+        fastify, // 1º: fastify instance
+        request.params.companyId, // 2º: companyId
+        request.query.days || 7 // 3º: days
       );
       if (expiringQuotes) {
         reply.send(expiringQuotes);
@@ -353,7 +322,7 @@ module.exports = async function (fastify, opts) {
     }
   );
 
-  // GET /api/companies/:companyId/quotes/generate-number
+  // GET /api/companies/:companyId/quotes/generate-number (OPERAÇÃO DE LEITURA)
   fastify.get(
     "/:companyId/quotes/generate-number",
     {
@@ -374,15 +343,20 @@ module.exports = async function (fastify, opts) {
               quote_number: { type: "string" },
             },
           },
+          401: { $ref: "ErrorResponse#" },
+          403: { $ref: "ErrorResponse#" },
+          404: { $ref: "ErrorResponse#" },
+          500: { $ref: "ErrorResponse#" },
         },
       },
-      ...quotesPreHandler,
+      ...readPreHandler,
     },
     async (request, reply) => {
       const quoteNumber = await handleServiceCall(
         reply,
         services.quote.generateQuoteNumber.bind(services.quote),
-        request.params.companyId
+        fastify, // 1º: fastify instance
+        request.params.companyId // 2º: companyId
       );
       if (quoteNumber) {
         reply.send({ quote_number: quoteNumber });
