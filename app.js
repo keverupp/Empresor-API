@@ -12,6 +12,15 @@ const fastify = Fastify({
   // Aumenta o tempo limite padrão para inicialização dos plugins
   // evitando erros de "Plugin did not start in time" em ambientes lentos
   pluginTimeout: 20000,
+  ajv: {
+    customOptions: {
+      allErrors: true,
+      useDefaults: true, // aplica default: [] no items
+      coerceTypes: true,
+      removeAdditional: true,
+      allowUnionTypes: true, // ✅ permite type: [..,..]
+    },
+  },
 });
 
 const start = async () => {

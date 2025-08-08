@@ -35,7 +35,7 @@ const S_QUOTE_ITEM = {
   },
 };
 
-// Schema para orçamento completo
+// Schema para orçamento completo (response)
 const S_QUOTE_RESPONSE = {
   $id: "QuoteResponse",
   type: "object",
@@ -86,10 +86,7 @@ const S_QUOTE_RESPONSE = {
       type: ["string", "null"],
       description: "Termos e condições específicos do orçamento",
     },
-    subtotal_cents: {
-      type: "integer",
-      description: "Subtotal em centavos",
-    },
+    subtotal_cents: { type: "integer", description: "Subtotal em centavos" },
     discount_type: {
       type: ["string", "null"],
       enum: ["percentage", "fixed_amount", null],
@@ -97,7 +94,7 @@ const S_QUOTE_RESPONSE = {
     },
     discount_value_cents: {
       type: ["integer", "null"],
-      description: "Valor do desconto em centavos",
+      description: "Valor do desconto aplicado em centavos",
     },
     tax_amount_cents: {
       type: ["integer", "null"],
@@ -107,15 +104,8 @@ const S_QUOTE_RESPONSE = {
       type: "integer",
       description: "Valor total em centavos",
     },
-    currency: {
-      type: "string",
-      default: "BRL",
-      description: "Moeda",
-    },
-    pdf_url: {
-      type: ["string", "null"],
-      description: "URL do PDF gerado",
-    },
+    currency: { type: "string", default: "BRL", description: "Moeda" },
+    pdf_url: { type: ["string", "null"], description: "URL do PDF gerado" },
     accepted_at: {
       type: ["string", "null"],
       format: "date-time",
@@ -126,15 +116,8 @@ const S_QUOTE_RESPONSE = {
       format: "date-time",
       description: "Data de rejeição",
     },
-    created_at: {
-      type: "string",
-      format: "date-time",
-    },
-    updated_at: {
-      type: "string",
-      format: "date-time",
-    },
-    // Dados relacionados que podem ser incluídos
+    created_at: { type: "string", format: "date-time" },
+    updated_at: { type: "string", format: "date-time" },
     client: {
       type: "object",
       properties: {
@@ -152,10 +135,11 @@ const S_QUOTE_RESPONSE = {
   },
 };
 
-// Schema para criação de orçamento
+// Schema para criação de orçamento (payload)
 const S_QUOTE_CREATE_PAYLOAD = {
   $id: "QuoteCreatePayload",
   type: "object",
+  additionalProperties: false,
   properties: {
     client_id: {
       type: "string",
@@ -194,26 +178,25 @@ const S_QUOTE_CREATE_PAYLOAD = {
       enum: ["percentage", "fixed_amount", null],
       description: "Tipo de desconto",
     },
+    // quando percentage: taxa (%). quando fixed_amount: valor em centavos.
     discount_value_cents: {
-      type: ["integer", "null"],
+      type: ["number", "integer", "null"],
       minimum: 0,
-      description: "Valor do desconto em centavos",
+      description: "Taxa (%) se percentage; valor em centavos se fixed_amount",
     },
     tax_amount_cents: {
       type: ["integer", "null"],
       minimum: 0,
       description: "Valor do imposto em centavos",
     },
-    currency: {
-      type: "string",
-      default: "BRL",
-      description: "Moeda",
-    },
+    currency: { type: "string", default: "BRL", description: "Moeda" },
     items: {
       type: "array",
-      minItems: 1,
+      minItems: 0, // ✅ permite vazio
+      default: [], // ✅ preenche [] se ausente (com useDefaults)
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           product_id: {
             type: ["string", "null"],
@@ -239,20 +222,17 @@ const S_QUOTE_CREATE_PAYLOAD = {
       },
     },
   },
-  required: ["client_id", "quote_number", "items"],
+  required: ["client_id", "quote_number"], // ✅ NÃO exige items
 };
 
-// Schema para atualização de orçamento
+// Schema para atualização de orçamento (payload)
 const S_QUOTE_UPDATE_PAYLOAD = {
   $id: "QuoteUpdatePayload",
   type: "object",
+  additionalProperties: false,
   properties: {
     client_id: { type: "string" },
-    quote_number: {
-      type: "string",
-      minLength: 1,
-      maxLength: 50,
-    },
+    quote_number: { type: "string", minLength: 1, maxLength: 50 },
     status: {
       type: "string",
       enum: [
@@ -274,13 +254,16 @@ const S_QUOTE_UPDATE_PAYLOAD = {
       type: ["string", "null"],
       enum: ["percentage", "fixed_amount", null],
     },
-    discount_value_cents: { type: ["integer", "null"], minimum: 0 },
+    // idem create: aceita número para percentual
+    discount_value_cents: { type: ["number", "integer", "null"], minimum: 0 },
     tax_amount_cents: { type: ["integer", "null"], minimum: 0 },
     items: {
       type: "array",
-      minItems: 1,
+      minItems: 0, // ✅ aceita [] para limpar itens
+      default: [], // se vier explicitamente null, trate no handler
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           id: {
             type: ["integer", "null"],
@@ -394,10 +377,7 @@ const getQuoteByIdSchema = {
   security: [{ bearerAuth: [] }],
   params: {
     type: "object",
-    properties: {
-      companyId: { type: "string" },
-      quoteId: { type: "string" },
-    },
+    properties: { companyId: { type: "string" }, quoteId: { type: "string" } },
     required: ["companyId", "quoteId"],
   },
   response: {
@@ -417,10 +397,7 @@ const updateQuoteSchema = {
   security: [{ bearerAuth: [] }],
   params: {
     type: "object",
-    properties: {
-      companyId: { type: "string" },
-      quoteId: { type: "string" },
-    },
+    properties: { companyId: { type: "string" }, quoteId: { type: "string" } },
     required: ["companyId", "quoteId"],
   },
   body: { $ref: "QuoteUpdatePayload#" },
@@ -443,10 +420,7 @@ const deleteQuoteSchema = {
   security: [{ bearerAuth: [] }],
   params: {
     type: "object",
-    properties: {
-      companyId: { type: "string" },
-      quoteId: { type: "string" },
-    },
+    properties: { companyId: { type: "string" }, quoteId: { type: "string" } },
     required: ["companyId", "quoteId"],
   },
   response: {
@@ -467,14 +441,12 @@ const updateQuoteStatusSchema = {
   security: [{ bearerAuth: [] }],
   params: {
     type: "object",
-    properties: {
-      companyId: { type: "string" },
-      quoteId: { type: "string" },
-    },
+    properties: { companyId: { type: "string" }, quoteId: { type: "string" } },
     required: ["companyId", "quoteId"],
   },
   body: {
     type: "object",
+    additionalProperties: false,
     properties: {
       status: {
         type: "string",

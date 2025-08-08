@@ -1,5 +1,24 @@
 "use strict";
 
+/** ---------------- Helpers numéricos e arredondamento ---------------- */
+const toNumber = (v, def = 0) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : def;
+};
+
+const toInt = (v, def = 0) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? n : def;
+};
+
+// total da linha em centavos (quantity * unit_price_cents), com arredondamento consistente
+function calcLineTotalCents(quantity, unit_price_cents) {
+  const qty = toNumber(quantity, 0);
+  const unit = toInt(unit_price_cents, 0);
+  return Math.round(qty * unit);
+}
+
+/** ---------------- Mapper público <-> interno ---------------- */
 function mapQuotePublicId(quote) {
   if (!quote) return null;
   const {
@@ -32,14 +51,14 @@ function mapQuotePublicId(quote) {
         return {
           ...itemRest,
           product_id: String(product_public_id || _product_internal_id),
-          quantity: quantity !== undefined ? parseFloat(quantity) : undefined,
+          quantity: quantity !== undefined ? toNumber(quantity, 0) : undefined,
           unit_price_cents:
             unit_price_cents !== undefined
-              ? parseInt(unit_price_cents, 10)
+              ? toInt(unit_price_cents, 0)
               : undefined,
           total_price_cents:
             total_price_cents !== undefined
-              ? parseInt(total_price_cents, 10)
+              ? toInt(total_price_cents, 0)
               : undefined,
         };
       })
@@ -51,24 +70,25 @@ function mapQuotePublicId(quote) {
     client_id: String(client_public_id || _client_internal_id),
     created_by_user_id: String(created_by_user_public_id || _user_internal_id),
     subtotal_cents:
-      subtotal_cents !== undefined ? parseInt(subtotal_cents, 10) : undefined,
+      subtotal_cents !== undefined ? toInt(subtotal_cents, 0) : undefined,
     discount_value_cents:
       discount_value_cents === null || discount_value_cents === undefined
         ? null
-        : parseInt(discount_value_cents, 10),
+        : toInt(discount_value_cents, 0), // ← valor aplicado em centavos
     tax_amount_cents:
       tax_amount_cents === null || tax_amount_cents === undefined
         ? null
-        : parseInt(tax_amount_cents, 10),
+        : toInt(tax_amount_cents, 0),
     total_amount_cents:
       total_amount_cents !== undefined
-        ? parseInt(total_amount_cents, 10)
+        ? toInt(total_amount_cents, 0)
         : undefined,
     ...(mappedItems !== undefined ? { items: mappedItems } : {}),
     ...rest,
   };
 }
 
+/** ---------------- Serviço ---------------- */
 class QuoteService {
   async _resolveCompanyId(knex, identifier) {
     const row = await knex("companies")
@@ -101,13 +121,46 @@ class QuoteService {
       .first();
     return row ? row.id : null;
   }
+
   /**
-   * Cria um novo orçamento com itens
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @param {number} userId
-   * @param {object} quoteData
-   * @returns {Promise<object>}
+   * Calcula totais do orçamento
+   * @private
+   * @param {Array} items - [{ quantity, unit_price_cents }]
+   * @param {string} discountType - 'percentage' | 'fixed_amount' | null
+   * @param {number} discountValue - se percentage => taxa (0–100); se fixed_amount => valor em centavos
+   * @param {number} taxAmount - valor em centavos
+   * @returns {{subtotal_cents:number, discount_value_cents:number, tax_amount_cents:number, total_amount_cents:number}}
+   */
+  _calculateTotals(items, discountType, discountValue = 0, taxAmount = 0) {
+    const lineTotals = (items || []).map((it) =>
+      calcLineTotalCents(it.quantity, it.unit_price_cents)
+    );
+    const subtotal = lineTotals.reduce((s, v) => s + v, 0);
+
+    let discount = 0;
+    if (discountType === "percentage") {
+      const rate = Math.max(0, Math.min(100, toNumber(discountValue, 0))); // taxa %
+      discount = Math.round(subtotal * (rate / 100));
+    } else if (discountType === "fixed_amount") {
+      discount = Math.max(0, toInt(discountValue, 0)); // já em centavos
+    }
+
+    // trava desconto
+    discount = Math.min(discount, subtotal);
+
+    const tax = Math.max(0, toInt(taxAmount, 0));
+    const total = subtotal - discount + tax;
+
+    return {
+      subtotal_cents: subtotal,
+      discount_value_cents: discount, // ← sempre valor aplicado em centavos
+      tax_amount_cents: tax,
+      total_amount_cents: total,
+    };
+  }
+
+  /**
+   * Cria um novo orçamento (aceita items vazio)
    */
   async createQuote(fastify, companyId, userId, quoteData) {
     const { knex, log } = fastify;
@@ -121,19 +174,20 @@ class QuoteService {
       internal_notes,
       terms_and_conditions_content,
       discount_type,
-      discount_value_cents,
+      discount_value_cents, // se percentage, aqui vem a TAXA; se fixed, vem centavos
       tax_amount_cents,
       currency = "BRL",
+      // opcional: se existir no schema, podemos salvar a taxa
+      discount_rate_percent,
     } = quoteData;
 
     const companyInternalId = await this._resolveCompanyId(knex, companyId);
     const clientInternalId = await this._resolveClientId(knex, client_id);
 
-    // 1. Validação do Cliente
+    // 1) valida cliente
     const client = await knex("clients")
       .where({ id: clientInternalId, company_id: companyInternalId })
       .first();
-
     if (!client) {
       const error = new Error("Cliente não encontrado nesta empresa.");
       error.statusCode = 404;
@@ -141,11 +195,10 @@ class QuoteService {
       throw error;
     }
 
-    // 2. Validação de Orçamento Duplicado
+    // 2) valida número duplicado
     const existingQuote = await knex("quotes")
       .where({ company_id: companyInternalId, quote_number })
       .first();
-
     if (existingQuote) {
       const error = new Error(
         "Já existe um orçamento com este número nesta empresa."
@@ -155,9 +208,10 @@ class QuoteService {
       throw error;
     }
 
-    // Resolve itens convertendo IDs públicos de produtos e preenchendo dados
+    // 3) resolve itens (pode ser vazio)
+    const itemsArray = Array.isArray(items) ? items : [];
     const resolvedItems = await Promise.all(
-      items.map(async (item) => {
+      itemsArray.map(async (item) => {
         let productInternalId = null;
         let description = item.description;
         let unitPrice = item.unit_price_cents;
@@ -167,7 +221,6 @@ class QuoteService {
             knex,
             item.product_id
           );
-
           const product = await knex("products")
             .where({ id: productInternalId, company_id: companyInternalId })
             .first();
@@ -177,7 +230,6 @@ class QuoteService {
             err.code = "PRODUCT_NOT_FOUND";
             throw err;
           }
-
           if (description == null) description = product.name;
           if (unitPrice == null) unitPrice = product.unit_price_cents;
         }
@@ -185,13 +237,13 @@ class QuoteService {
         return {
           product_id: productInternalId,
           description,
-          quantity: item.quantity,
-          unit_price_cents: unitPrice,
+          quantity: toNumber(item.quantity, 0),
+          unit_price_cents: toInt(unitPrice, 0),
         };
       })
     );
 
-    // 3. Cálculo dos totais usando os itens resolvidos
+    // 4) calcula totais
     const totals = this._calculateTotals(
       resolvedItems,
       discount_type,
@@ -200,9 +252,8 @@ class QuoteService {
     );
 
     const transaction = await knex.transaction();
-
     try {
-      // 4. Inserção no Banco de Dados
+      // 5) insere orçamento
       const [quote] = await transaction("quotes")
         .insert({
           company_id: companyInternalId,
@@ -215,35 +266,46 @@ class QuoteService {
           notes,
           internal_notes,
           terms_and_conditions_content,
-          subtotal_cents: totals.subtotal,
           discount_type: discount_type || null,
-          discount_value_cents: totals.discount,
-          tax_amount_cents: tax_amount_cents ?? null,
-          total_amount_cents: totals.total,
+          discount_value_cents: totals.discount_value_cents, // valor aplicado
+          tax_amount_cents: totals.tax_amount_cents,
+          subtotal_cents: totals.subtotal_cents,
+          total_amount_cents: totals.total_amount_cents,
           currency,
+          // se existir coluna para taxa percentual gravamos também:
+          ...(discount_type === "percentage" && discount_rate_percent == null
+            ? { discount_rate_percent: toNumber(discount_value_cents, 0) }
+            : discount_rate_percent != null
+            ? { discount_rate_percent: toNumber(discount_rate_percent, 0) }
+            : {}),
         })
         .returning("*");
 
-      const quoteItems = resolvedItems.map((item, index) => ({
-        quote_id: quote.id,
-        product_id: item.product_id || null,
-        description: item.description,
-        quantity: item.quantity,
-        unit_price_cents: item.unit_price_cents,
-        total_price_cents: Math.round(item.quantity * item.unit_price_cents),
-        item_order: index + 1,
-      }));
+      // 6) insere itens somente se houver
+      if (resolvedItems.length > 0) {
+        const quoteItems = resolvedItems.map((item, index) => ({
+          quote_id: quote.id,
+          product_id: item.product_id || null,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price_cents: item.unit_price_cents,
+          total_price_cents: calcLineTotalCents(
+            item.quantity,
+            item.unit_price_cents
+          ),
+          item_order: index + 1,
+        }));
+        await transaction("quote_items").insert(quoteItems);
+      }
 
-      await transaction("quote_items").insert(quoteItems);
       await transaction.commit();
       log.info(`Orçamento #${quote.id} criado para a empresa #${companyId}`);
 
-      // CORREÇÃO: Usar quote.public_id (UUID) em vez de quote.id (interno)
+      // retorna usando PUBLIC ID
       return this.getQuoteById(fastify, companyId, quote.public_id);
     } catch (error) {
       await transaction.rollback();
       log.error(error, `Erro ao criar orçamento para a empresa #${companyId}`);
-
       if (error.code === "23505") {
         const customError = new Error(
           "Já existe um orçamento com este número nesta empresa."
@@ -252,17 +314,12 @@ class QuoteService {
         customError.code = "QUOTE_NUMBER_CONFLICT";
         throw customError;
       }
-
       throw new Error("Não foi possível criar o orçamento.");
     }
   }
 
   /**
    * Lista orçamentos de uma empresa com paginação e filtros
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @param {object} queryParams
-   * @returns {Promise<object>}
    */
   async listQuotes(fastify, companyId, queryParams = {}) {
     const { knex } = fastify;
@@ -281,7 +338,6 @@ class QuoteService {
 
     const offset = (page - 1) * pageSize;
 
-    // Query principal com JOIN para trazer dados do cliente e da empresa
     let query = knex("quotes as q")
       .leftJoin("clients as c", "q.client_id", "c.id")
       .leftJoin("users as u", "q.created_by_user_id", "u.id")
@@ -303,12 +359,10 @@ class QuoteService {
         `)
       );
 
-    // Query para contagem
     let countQuery = knex("quotes")
       .where({ company_id: companyInternalId })
       .count("id as total");
 
-    // Aplicar filtros
     if (status) {
       query = query.where("q.status", status);
       countQuery = countQuery.where("status", status);
@@ -354,11 +408,9 @@ class QuoteService {
         .orderBy("q.created_at", "desc")
         .limit(pageSize)
         .offset(offset);
-
       const [{ total: totalItems }] = await countQuery;
       const totalPages = Math.ceil(totalItems / pageSize);
 
-      // Para cada orçamento, busca os itens
       const quotesWithItems = await Promise.all(
         quotes.map(async (quote) => {
           const items = await knex("quote_items as qi")
@@ -367,10 +419,7 @@ class QuoteService {
             .select("qi.*", "p.public_id as product_public_id")
             .orderBy("qi.item_order", "asc");
 
-          return mapQuotePublicId({
-            ...quote,
-            items,
-          });
+          return mapQuotePublicId({ ...quote, items });
         })
       );
 
@@ -391,18 +440,6 @@ class QuoteService {
 
   /**
    * Busca um orçamento específico por ID com todos os detalhes
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @param {number} quoteId
-   * @returns {Promise<object>}
-   */
-
-  /**
-   * Busca um orçamento específico por ID com todos os detalhes
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @param {number} quoteId
-   * @returns {Promise<object>}
    */
   async getQuoteById(fastify, companyId, quoteId) {
     const { knex } = fastify;
@@ -442,56 +479,38 @@ class QuoteService {
       throw error;
     }
 
-    // --- INÍCIO DA CORREÇÃO DEFINITIVA ---
-    // Garante que todos os valores monetários sejam retornados como inteiros.
-    // Drivers de banco de dados podem retornar tipos NUMERIC/DECIMAL como strings.
     const parsedQuote = {
       ...quote,
-      subtotal_cents: parseInt(quote.subtotal_cents, 10),
-      // Trata os campos que podem ser nulos antes de fazer o parse
+      subtotal_cents: toInt(quote.subtotal_cents, 0),
       discount_value_cents:
         quote.discount_value_cents === null
           ? null
-          : parseInt(quote.discount_value_cents, 10),
+          : toInt(quote.discount_value_cents, 0),
       tax_amount_cents:
         quote.tax_amount_cents === null
           ? null
-          : parseInt(quote.tax_amount_cents, 10),
-      total_amount_cents: parseInt(quote.total_amount_cents, 10),
+          : toInt(quote.tax_amount_cents, 0),
+      total_amount_cents: toInt(quote.total_amount_cents, 0),
     };
-    // --- FIM DA CORREÇÃO DEFINITIVA ---
 
-    // Busca os itens do orçamento
     const items = await knex("quote_items as qi")
       .leftJoin("products as p", "qi.product_id", "p.id")
       .where({ quote_id: quoteInternalId })
       .select("qi.*", "p.public_id as product_public_id")
       .orderBy("qi.item_order", "asc");
 
-    // Retorna o objeto com os valores devidamente convertidos
-    return mapQuotePublicId({
-      ...parsedQuote,
-      items,
-    });
+    return mapQuotePublicId({ ...parsedQuote, items });
   }
 
   /**
-   * Atualiza um orçamento específico
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @param {number} quoteId
-   * @param {object} updateData
-   * @returns {Promise<object>}
+   * Atualiza um orçamento específico (aceita items vazio)
    */
   async updateQuote(fastify, companyId, quoteId, updateData) {
     const { knex, log } = fastify;
     const companyInternalId = await this._resolveCompanyId(knex, companyId);
     const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
 
-    // Verifica se o orçamento existe e pertence à empresa
     const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
-
-    // Verifica se o orçamento pode ser editado
     if (["accepted", "invoiced"].includes(existingQuote.status)) {
       const error = new Error(
         "Orçamentos aceitos ou faturados não podem ser editados."
@@ -502,12 +521,9 @@ class QuoteService {
     }
 
     const transaction = await knex.transaction();
-
     try {
-      // Prepara os dados da atualização do orçamento
       const quoteUpdateData = { updated_at: knex.fn.now() };
 
-      // Campos simples que podem ser atualizados
       const simpleFields = [
         "client_id",
         "quote_number",
@@ -518,20 +534,32 @@ class QuoteService {
         "internal_notes",
         "terms_and_conditions_content",
         "discount_type",
-        "discount_value_cents",
+        "discount_value_cents", // entrada (pode ser taxa ou centavos, conforme tipo)
         "tax_amount_cents",
+        // se existir no schema:
+        "discount_rate_percent",
       ];
-
       simpleFields.forEach((field) => {
         if (updateData[field] !== undefined) {
           quoteUpdateData[field] = updateData[field];
         }
       });
 
-      // Se houver novos itens, recalcula os totais
-      if (updateData.items) {
-        const resolvedItems = await Promise.all(
-          updateData.items.map(async (item) => {
+      const itemsChanged = updateData.items !== undefined;
+      const discountChanged = [
+        "discount_type",
+        "discount_value_cents",
+        "tax_amount_cents",
+      ].some((k) => updateData[k] !== undefined);
+
+      // 1) resolver itens (novos ou atuais)
+      let resolvedItems = [];
+      if (itemsChanged) {
+        const itemsArray = Array.isArray(updateData.items)
+          ? updateData.items
+          : [];
+        resolvedItems = await Promise.all(
+          itemsArray.map(async (item) => {
             let productInternalId = null;
             let description = item.description;
             let unitPrice = item.unit_price_cents;
@@ -541,7 +569,6 @@ class QuoteService {
                 knex,
                 item.product_id
               );
-
               const product = await knex("products")
                 .where({ id: productInternalId, company_id: companyInternalId })
                 .first();
@@ -551,7 +578,6 @@ class QuoteService {
                 err.code = "PRODUCT_NOT_FOUND";
                 throw err;
               }
-
               if (description == null) description = product.name;
               if (unitPrice == null) unitPrice = product.unit_price_cents;
             }
@@ -559,60 +585,90 @@ class QuoteService {
             return {
               product_id: productInternalId,
               description,
-              quantity: item.quantity,
-              unit_price_cents: unitPrice,
+              quantity: toNumber(item.quantity, 0),
+              unit_price_cents: toInt(unitPrice, 0),
             };
           })
         );
+      } else {
+        // usa itens atuais do banco para recalcular se preciso
+        const currentItems = await knex("quote_items").where({
+          quote_id: quoteInternalId,
+        });
+        resolvedItems = currentItems.map((it) => ({
+          product_id: it.product_id,
+          description: it.description,
+          quantity: toNumber(it.quantity, 0),
+          unit_price_cents: toInt(it.unit_price_cents, 0),
+        }));
+      }
+
+      // 2) recalcula totais quando itens OU desconto/tributo mudarem
+      if (itemsChanged || discountChanged) {
+        const effDiscountType =
+          updateData.discount_type ?? existingQuote.discount_type;
+        const effDiscountValue =
+          updateData.discount_value_cents ?? existingQuote.discount_value_cents;
+        const effTax =
+          updateData.tax_amount_cents ?? existingQuote.tax_amount_cents;
 
         const totals = this._calculateTotals(
           resolvedItems,
-          updateData.discount_type || existingQuote.discount_type,
-          updateData.discount_value_cents !== undefined
-            ? updateData.discount_value_cents
-            : existingQuote.discount_value_cents,
-          updateData.tax_amount_cents !== undefined
-            ? updateData.tax_amount_cents
-            : existingQuote.tax_amount_cents
+          effDiscountType,
+          effDiscountValue,
+          effTax
         );
 
-        quoteUpdateData.subtotal_cents = totals.subtotal;
-        quoteUpdateData.total_amount_cents = totals.total;
+        quoteUpdateData.subtotal_cents = totals.subtotal_cents;
+        quoteUpdateData.discount_value_cents = totals.discount_value_cents; // valor aplicado
+        quoteUpdateData.tax_amount_cents = totals.tax_amount_cents;
+        quoteUpdateData.total_amount_cents = totals.total_amount_cents;
 
-        // Remove itens antigos
+        // se existir coluna para taxa percentual e o tipo for percentage, garantimos persistir a taxa
+        if (effDiscountType === "percentage") {
+          const rate =
+            updateData.discount_rate_percent ??
+            (updateData.discount_value_cents !== undefined
+              ? toNumber(updateData.discount_value_cents, 0)
+              : undefined);
+          if (rate !== undefined) {
+            quoteUpdateData.discount_rate_percent = toNumber(rate, 0);
+          }
+        }
+      }
+
+      // 3) atualizar itens (remonta todos quando items veio)
+      if (itemsChanged) {
         await transaction("quote_items")
           .where({ quote_id: quoteInternalId })
           .del();
-
-        // Insere novos itens
-        const newItems = resolvedItems.map((item, index) => ({
-          quote_id: quoteInternalId,
-          product_id: item.product_id || null,
-          description: item.description,
-          quantity: item.quantity,
-          unit_price_cents: item.unit_price_cents,
-          total_price_cents: Math.round(item.quantity * item.unit_price_cents),
-          item_order: index + 1,
-        }));
-
-        await transaction("quote_items").insert(newItems);
+        if (resolvedItems.length > 0) {
+          const newItems = resolvedItems.map((item, index) => ({
+            quote_id: quoteInternalId,
+            product_id: item.product_id || null,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price_cents: item.unit_price_cents,
+            total_price_cents: calcLineTotalCents(
+              item.quantity,
+              item.unit_price_cents
+            ),
+            item_order: index + 1,
+          }));
+          await transaction("quote_items").insert(newItems);
+        }
       }
 
-      // Atualiza o orçamento
       await transaction("quotes")
         .where({ id: quoteInternalId, company_id: companyInternalId })
         .update(quoteUpdateData);
 
       await transaction.commit();
-
       log.info(`Orçamento #${quoteId} da empresa #${companyId} atualizado.`);
-
-      // Retorna o orçamento atualizado
       return this.getQuoteById(fastify, companyId, quoteId);
     } catch (error) {
       await transaction.rollback();
       log.error(error, `Erro ao atualizar orçamento #${quoteId}`);
-
       if (error.code === "23505") {
         const customError = new Error(
           "O número do orçamento fornecido já pertence a outro orçamento desta empresa."
@@ -621,7 +677,6 @@ class QuoteService {
         customError.code = "QUOTE_NUMBER_CONFLICT";
         throw customError;
       }
-
       if (error.statusCode) throw error;
       throw new Error("Não foi possível atualizar o orçamento.");
     }
@@ -629,16 +684,10 @@ class QuoteService {
 
   /**
    * Atualiza apenas o status de um orçamento
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @param {number} quoteId
-   * @param {string} newStatus
-   * @returns {Promise<object>}
    */
   async updateQuoteStatus(fastify, companyId, quoteId, newStatus) {
     const { knex, log } = fastify;
 
-    // Verifica se o orçamento existe
     const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
 
     const updateData = {
@@ -646,7 +695,6 @@ class QuoteService {
       updated_at: knex.fn.now(),
     };
 
-    // Define timestamps específicos baseados no status
     if (newStatus === "accepted" && existingQuote.status !== "accepted") {
       updateData.accepted_at = knex.fn.now();
     }
@@ -664,7 +712,6 @@ class QuoteService {
         .update(updateData);
 
       log.info(`Status do orçamento #${quoteId} alterado para ${newStatus}`);
-
       return this.getQuoteById(fastify, companyId, quoteId);
     } catch (error) {
       log.error(error, `Erro ao atualizar status do orçamento #${quoteId}`);
@@ -674,20 +721,13 @@ class QuoteService {
 
   /**
    * Exclui um orçamento específico
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @param {number} quoteId
-   * @returns {Promise<object>}
    */
   async deleteQuote(fastify, companyId, quoteId) {
     const { knex, log } = fastify;
     const companyInternalId = await this._resolveCompanyId(knex, companyId);
     const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
 
-    // Verifica se o orçamento existe
     const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
-
-    // Verifica se o orçamento pode ser excluído
     if (["accepted", "invoiced"].includes(existingQuote.status)) {
       const error = new Error(
         "Orçamentos aceitos ou faturados não podem ser excluídos."
@@ -698,14 +738,11 @@ class QuoteService {
     }
 
     const transaction = await knex.transaction();
-
     try {
-      // Remove primeiro os itens (devido à foreign key)
       await transaction("quote_items")
         .where({ quote_id: quoteInternalId })
         .del();
 
-      // Remove o orçamento
       const result = await transaction("quotes")
         .where({ id: quoteInternalId, company_id: companyInternalId })
         .del();
@@ -724,7 +761,6 @@ class QuoteService {
     } catch (error) {
       await transaction.rollback();
       log.error(error, `Erro ao excluir orçamento #${quoteId}`);
-
       if (error.statusCode) throw error;
       throw new Error("Não foi possível excluir o orçamento.");
     }
@@ -732,10 +768,6 @@ class QuoteService {
 
   /**
    * Conta o número total de orçamentos de uma empresa em um período
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @param {string} period - 'month', 'year' ou 'all'
-   * @returns {Promise<number>}
    */
   async getQuoteCount(fastify, companyId, period = "month") {
     const { knex } = fastify;
@@ -744,18 +776,14 @@ class QuoteService {
     let query = knex("quotes").where({ company_id: companyInternalId });
 
     if (period === "month") {
-      // Orçamentos do mês atual
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
-
       query = query.where("created_at", ">=", startOfMonth.toISOString());
     } else if (period === "year") {
-      // Orçamentos do ano atual
       const startOfYear = new Date();
       startOfYear.setMonth(0, 1);
       startOfYear.setHours(0, 0, 0, 0);
-
       query = query.where("created_at", ">=", startOfYear.toISOString());
     }
 
@@ -765,15 +793,11 @@ class QuoteService {
 
   /**
    * Gera número automático para orçamento
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @returns {Promise<string>}
    */
   async generateQuoteNumber(fastify, companyId) {
     const { knex } = fastify;
     const companyInternalId = await this._resolveCompanyId(knex, companyId);
 
-    // Busca o último número de orçamento da empresa
     const lastQuote = await knex("quotes")
       .where({ company_id: companyInternalId })
       .orderBy("id", "desc")
@@ -785,7 +809,6 @@ class QuoteService {
       return `${currentYear}-001`;
     }
 
-    // Extrai o número sequencial do último orçamento
     const lastNumber = lastQuote.quote_number;
     const match = lastNumber.match(/(\d{4})-(\d+)$/);
 
@@ -799,50 +822,11 @@ class QuoteService {
       }
     }
 
-    // Se o ano mudou ou formato não reconhecido, começa do 001
     return `${currentYear}-001`;
   }
 
   /**
-   * Calcula totais do orçamento
-   * @private
-   * @param {Array} items
-   * @param {string} discountType
-   * @param {number} discountValue
-   * @param {number} taxAmount
-   * @returns {object}
-   */
-  _calculateTotals(items, discountType, discountValue = 0, taxAmount = 0) {
-    // Calcula subtotal
-    const subtotal = items.reduce((sum, item) => {
-      return sum + item.quantity * item.unit_price_cents;
-    }, 0);
-
-    // Calcula desconto
-    let discountAmount = 0;
-    if (discountType === "percentage" && discountValue > 0) {
-      discountAmount = Math.round(subtotal * (discountValue / 100));
-    } else if (discountType === "fixed_amount" && discountValue > 0) {
-      discountAmount = discountValue;
-    }
-
-    // Calcula total
-    const total = subtotal - discountAmount + (taxAmount || 0);
-
-    return {
-      subtotal: Math.round(subtotal),
-      discount: Math.round(discountAmount),
-      tax: Math.round(taxAmount || 0),
-      total: Math.round(total),
-    };
-  }
-
-  /**
    * Busca orçamentos próximos ao vencimento
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @param {number} daysAhead
-   * @returns {Promise<Array>}
    */
   async getExpiringQuotes(fastify, companyId, daysAhead = 7) {
     const { knex } = fastify;
@@ -874,9 +858,6 @@ class QuoteService {
 
   /**
    * Estatísticas de orçamentos
-   * @param {import('fastify').FastifyInstance} fastify
-   * @param {number} companyId
-   * @returns {Promise<object>}
    */
   async getQuoteStats(fastify, companyId) {
     const { knex } = fastify;
@@ -906,7 +887,6 @@ class QuoteService {
     const accepted = parseInt(stats.accepted_count, 10);
     const rejected = parseInt(stats.rejected_count, 10);
     const totalConsidered = accepted + rejected;
-
     const acceptanceRate =
       totalConsidered > 0 ? Math.round((accepted / totalConsidered) * 100) : 0;
 
