@@ -524,8 +524,34 @@ class QuoteService {
     try {
       const quoteUpdateData = { updated_at: knex.fn.now() };
 
+      // 🔧 Se trocar o cliente, resolve o ID interno e valida que pertence à mesma empresa
+      if (updateData.client_id !== undefined) {
+        const newClientInternalId = await this._resolveClientId(
+          knex,
+          updateData.client_id
+        );
+        if (!newClientInternalId) {
+          const err = new Error("Cliente não encontrado.");
+          err.statusCode = 404;
+          err.code = "CLIENT_NOT_FOUND";
+          throw err;
+        }
+
+        const belongs = await knex("clients")
+          .where({ id: newClientInternalId, company_id: companyInternalId })
+          .first();
+        if (!belongs) {
+          const err = new Error("Cliente não pertence a esta empresa.");
+          err.statusCode = 403;
+          err.code = "CLIENT_NOT_IN_COMPANY";
+          throw err;
+        }
+
+        quoteUpdateData.client_id = newClientInternalId;
+      }
+
       const simpleFields = [
-        "client_id",
+        // ⚠️ remover "client_id" daqui para não sobrescrever com UUID por engano
         "quote_number",
         "status",
         "issue_date",
@@ -534,11 +560,12 @@ class QuoteService {
         "internal_notes",
         "terms_and_conditions_content",
         "discount_type",
-        "discount_value_cents", // entrada (pode ser taxa ou centavos, conforme tipo)
+        "discount_value_cents",
         "tax_amount_cents",
         // se existir no schema:
         "discount_rate_percent",
       ];
+
       simpleFields.forEach((field) => {
         if (updateData[field] !== undefined) {
           quoteUpdateData[field] = updateData[field];
@@ -854,6 +881,312 @@ class QuoteService {
       .orderBy("q.expiry_date", "asc");
 
     return results.map(mapQuotePublicId);
+  }
+
+  /**
+   * Adiciona 1 item no orçamento e recalcula totais
+   */
+  async addQuoteItem(fastify, companyId, quoteId, payload) {
+    const { knex, log } = fastify;
+
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
+
+    // valida orçamento e empresa
+    const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
+    if (["accepted", "invoiced"].includes(existingQuote.status)) {
+      const e = new Error(
+        "Orçamentos aceitos ou faturados não podem ser editados."
+      );
+      e.statusCode = 422;
+      e.code = "QUOTE_NOT_EDITABLE";
+      throw e;
+    }
+
+    // resolve produto (opcional)
+    let productInternalId = null;
+    let description = payload.description;
+    let unitPriceCents = payload.unit_price_cents;
+
+    if (payload.product_id) {
+      productInternalId = await this._resolveProductId(
+        knex,
+        payload.product_id
+      );
+      const product = await knex("products")
+        .where({
+          id: productInternalId,
+          company_id: await this._resolveCompanyId(knex, companyId),
+        })
+        .first();
+      if (!product) {
+        const err = new Error("Produto não encontrado nesta empresa.");
+        err.statusCode = 404;
+        err.code = "PRODUCT_NOT_FOUND";
+        throw err;
+      }
+      if (description == null) description = product.name;
+      if (unitPriceCents == null) unitPriceCents = product.unit_price_cents;
+    }
+
+    const transaction = await knex.transaction();
+    try {
+      // descobrir próxima ordem
+      const { max_order } = await transaction("quote_items")
+        .where({ quote_id: quoteInternalId })
+        .max({ max_order: "item_order" })
+        .first();
+      const nextOrder = (max_order || 0) + 1;
+
+      // inserir item
+      const qty = Number(payload.quantity) || 0;
+      const unit = Math.round(Number(unitPriceCents) || 0);
+      const lineTotal = Math.round(qty * unit);
+
+      await transaction("quote_items").insert({
+        quote_id: quoteInternalId,
+        product_id: productInternalId || null,
+        description,
+        quantity: qty,
+        unit_price_cents: unit,
+        total_price_cents: lineTotal,
+        item_order: nextOrder,
+      });
+
+      // recarregar itens e recalcular totais
+      const itemsDb = await transaction("quote_items")
+        .where({ quote_id: quoteInternalId })
+        .orderBy("item_order", "asc");
+      const itemsForCalc = itemsDb.map((it) => ({
+        quantity: Number(it.quantity) || 0,
+        unit_price_cents: Math.round(Number(it.unit_price_cents) || 0),
+      }));
+      const totals = this._calculateTotals(
+        itemsForCalc,
+        existingQuote.discount_type,
+        existingQuote.discount_value_cents, // obs: aqui é taxa quando percentage
+        existingQuote.tax_amount_cents
+      );
+
+      await transaction("quotes")
+        .where({ id: quoteInternalId, company_id: companyInternalId })
+        .update({
+          subtotal_cents: totals.subtotal_cents,
+          discount_value_cents: totals.discount_value_cents,
+          tax_amount_cents: totals.tax_amount_cents,
+          total_amount_cents: totals.total_amount_cents,
+          updated_at: knex.fn.now(),
+        });
+
+      await transaction.commit();
+      log.info(`Item adicionado ao orçamento ${quoteId}`);
+      return this.getQuoteById(fastify, companyId, quoteId);
+    } catch (err) {
+      await transaction.rollback();
+      throw err.statusCode
+        ? err
+        : new Error("Não foi possível adicionar o item.");
+    }
+  }
+
+  /**
+   * Atualiza 1 item do orçamento e recalcula totais
+   */
+  async updateQuoteItem(fastify, companyId, quoteId, itemId, payload) {
+    const { knex, log } = fastify;
+
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
+
+    const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
+    if (["accepted", "invoiced"].includes(existingQuote.status)) {
+      const e = new Error(
+        "Orçamentos aceitos ou faturados não podem ser editados."
+      );
+      e.statusCode = 422;
+      e.code = "QUOTE_NOT_EDITABLE";
+      throw e;
+    }
+
+    // valida que o item pertence ao orçamento
+    const currentItem = await knex("quote_items")
+      .where({ id: itemId, quote_id: quoteInternalId })
+      .first();
+    if (!currentItem) {
+      const e = new Error("Item não encontrado neste orçamento.");
+      e.statusCode = 404;
+      e.code = "QUOTE_ITEM_NOT_FOUND";
+      throw e;
+    }
+
+    // resolver produto opcional
+    let productInternalId = currentItem.product_id;
+    let description = payload.description ?? currentItem.description;
+    let unitPriceCents =
+      payload.unit_price_cents ?? currentItem.unit_price_cents;
+
+    if (payload.product_id !== undefined) {
+      if (payload.product_id === null) {
+        productInternalId = null;
+      } else {
+        const pid = await this._resolveProductId(knex, payload.product_id);
+        const product = await knex("products")
+          .where({ id: pid, company_id: companyInternalId })
+          .first();
+        if (!product) {
+          const err = new Error("Produto não encontrado nesta empresa.");
+          err.statusCode = 404;
+          err.code = "PRODUCT_NOT_FOUND";
+          throw err;
+        }
+        productInternalId = pid;
+        if (payload.description == null && !description)
+          description = product.name;
+        if (payload.unit_price_cents == null && unitPriceCents == null)
+          unitPriceCents = product.unit_price_cents;
+      }
+    }
+
+    const qty =
+      payload.quantity !== undefined
+        ? Number(payload.quantity)
+        : Number(currentItem.quantity);
+    const unit =
+      payload.unit_price_cents !== undefined
+        ? Math.round(Number(payload.unit_price_cents))
+        : Math.round(Number(unitPriceCents));
+    const lineTotal = Math.round(
+      (Number.isFinite(qty) ? qty : 0) * (Number.isFinite(unit) ? unit : 0)
+    );
+
+    const transaction = await knex.transaction();
+    try {
+      await transaction("quote_items")
+        .where({ id: itemId, quote_id: quoteInternalId })
+        .update({
+          product_id: productInternalId,
+          description,
+          quantity: qty,
+          unit_price_cents: unit,
+          total_price_cents: lineTotal,
+          updated_at: knex.fn.now(),
+        });
+
+      const itemsDb = await transaction("quote_items")
+        .where({ quote_id: quoteInternalId })
+        .orderBy("item_order", "asc");
+      const itemsForCalc = itemsDb.map((it) => ({
+        quantity: Number(it.quantity) || 0,
+        unit_price_cents: Math.round(Number(it.unit_price_cents) || 0),
+      }));
+      const totals = this._calculateTotals(
+        itemsForCalc,
+        existingQuote.discount_type,
+        existingQuote.discount_value_cents,
+        existingQuote.tax_amount_cents
+      );
+
+      await transaction("quotes")
+        .where({ id: quoteInternalId, company_id: companyInternalId })
+        .update({
+          subtotal_cents: totals.subtotal_cents,
+          discount_value_cents: totals.discount_value_cents,
+          tax_amount_cents: totals.tax_amount_cents,
+          total_amount_cents: totals.total_amount_cents,
+          updated_at: knex.fn.now(),
+        });
+
+      await transaction.commit();
+      log.info(`Item ${itemId} atualizado no orçamento ${quoteId}`);
+      return this.getQuoteById(fastify, companyId, quoteId);
+    } catch (err) {
+      await transaction.rollback();
+      throw err.statusCode
+        ? err
+        : new Error("Não foi possível atualizar o item.");
+    }
+  }
+
+  /**
+   * Remove 1 item do orçamento, reordena e recalcula totais
+   */
+  async deleteQuoteItem(fastify, companyId, quoteId, itemId) {
+    const { knex, log } = fastify;
+
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
+
+    const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
+    if (["accepted", "invoiced"].includes(existingQuote.status)) {
+      const e = new Error(
+        "Orçamentos aceitos ou faturados não podem ser editados."
+      );
+      e.statusCode = 422;
+      e.code = "QUOTE_NOT_EDITABLE";
+      throw e;
+    }
+
+    const transaction = await knex.transaction();
+    try {
+      const item = await transaction("quote_items")
+        .where({ id: itemId, quote_id: quoteInternalId })
+        .first();
+      if (!item) {
+        const e = new Error("Item não encontrado neste orçamento.");
+        e.statusCode = 404;
+        e.code = "QUOTE_ITEM_NOT_FOUND";
+        throw e;
+      }
+
+      await transaction("quote_items")
+        .where({ id: itemId, quote_id: quoteInternalId })
+        .del();
+
+      // reordenar sequencialmente
+      const itemsDb = await transaction("quote_items")
+        .where({ quote_id: quoteInternalId })
+        .orderBy("item_order", "asc");
+
+      for (let i = 0; i < itemsDb.length; i++) {
+        const it = itemsDb[i];
+        if (it.item_order !== i + 1) {
+          await transaction("quote_items")
+            .where({ id: it.id })
+            .update({ item_order: i + 1 });
+        }
+      }
+
+      // recalcular totais
+      const itemsForCalc = itemsDb.map((it) => ({
+        quantity: Number(it.quantity) || 0,
+        unit_price_cents: Math.round(Number(it.unit_price_cents) || 0),
+      }));
+      const totals = this._calculateTotals(
+        itemsForCalc,
+        existingQuote.discount_type,
+        existingQuote.discount_value_cents,
+        existingQuote.tax_amount_cents
+      );
+
+      await transaction("quotes")
+        .where({ id: quoteInternalId, company_id: companyInternalId })
+        .update({
+          subtotal_cents: totals.subtotal_cents,
+          discount_value_cents: totals.discount_value_cents,
+          tax_amount_cents: totals.tax_amount_cents,
+          total_amount_cents: totals.total_amount_cents,
+          updated_at: knex.fn.now(),
+        });
+
+      await transaction.commit();
+      log.info(`Item ${itemId} removido do orçamento ${quoteId}`);
+      return this.getQuoteById(fastify, companyId, quoteId);
+    } catch (err) {
+      await transaction.rollback();
+      throw err.statusCode
+        ? err
+        : new Error("Não foi possível remover o item.");
+    }
   }
 
   /**

@@ -473,6 +473,62 @@ const updateQuoteStatusSchema = {
   },
 };
 
+// ── Schemas para itens (payloads) ─────────────────────────────────────────────
+const QuoteItemAddPayload = {
+  $id: "QuoteItemAddPayload",
+  type: "object",
+  additionalProperties: false,
+  required: ["description", "quantity", "unit_price_cents"],
+  description: "Payload para adicionar item ao orçamento",
+  properties: {
+    product_id: {
+      type: ["string", "null"],
+      description: "ID público do produto (opcional)",
+    },
+    description: {
+      type: "string",
+      minLength: 1,
+      description: "Descrição do item",
+    },
+    quantity: {
+      type: "number",
+      minimum: 0.01,
+      description: "Quantidade (aceita fracionado)",
+    },
+    unit_price_cents: {
+      type: "integer",
+      minimum: 0,
+      description: "Preço unitário em centavos",
+    },
+  },
+};
+
+const QuoteItemUpdatePayload = {
+  $id: "QuoteItemUpdatePayload",
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  description:
+    "Payload para atualizar item do orçamento (envie apenas campos que quer alterar)",
+  properties: {
+    product_id: {
+      type: ["string", "null"],
+      description: "ID público do produto (ou null para desvincular)",
+    },
+    description: {
+      type: "string",
+      minLength: 1,
+      description: "Descrição do item",
+    },
+    quantity: { type: "number", minimum: 0.01, description: "Quantidade" },
+    unit_price_cents: {
+      type: "integer",
+      minimum: 0,
+      description: "Preço unitário em centavos",
+    },
+  },
+};
+
 module.exports = {
   sharedSchemas: [
     S_QUOTE_ITEM,
@@ -480,6 +536,8 @@ module.exports = {
     S_QUOTE_CREATE_PAYLOAD,
     S_QUOTE_UPDATE_PAYLOAD,
     S_QUOTE_LIST_QUERYSTRING,
+    QuoteItemAddPayload,
+    QuoteItemUpdatePayload,
   ],
   createQuoteSchema,
   listQuotesSchema,

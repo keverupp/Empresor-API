@@ -93,6 +93,142 @@ module.exports = async function (fastify, opts) {
     ],
   };
 
+  // ADD item
+  fastify.post(
+    "/:companyId/quotes/:quoteId/items",
+    {
+      schema: {
+        description: "Adiciona um item ao orçamento",
+        tags: ["Orçamentos"],
+        summary: "Adicionar item",
+        operationId: "addQuoteItem",
+        security: [{ bearerAuth: [] }],
+        consumes: ["application/json"],
+        params: {
+          type: "object",
+          required: ["companyId", "quoteId"],
+          properties: {
+            companyId: { type: "string", description: "ID público da empresa" },
+            quoteId: { type: "string", description: "ID público do orçamento" },
+          },
+        },
+        body: { $ref: "QuoteItemAddPayload#" },
+        response: {
+          200: { $ref: "QuoteResponse#" },
+          400: { $ref: "ErrorResponse#" },
+          401: { $ref: "ErrorResponse#" },
+          403: { $ref: "ErrorResponse#" },
+          404: { $ref: "ErrorResponse#" },
+          422: { $ref: "ErrorResponse#" },
+          500: { $ref: "ErrorResponse#" },
+        },
+      },
+      ...writePreHandler,
+    },
+    async (request, reply) => {
+      const updatedQuote = await handleServiceCall(
+        reply,
+        services.quote.addQuoteItem.bind(services.quote),
+        fastify,
+        request.params.companyId,
+        request.params.quoteId,
+        request.body
+      );
+      if (updatedQuote) reply.send(updatedQuote);
+    }
+  );
+
+  // UPDATE item
+  fastify.put(
+    "/:companyId/quotes/:quoteId/items/:itemId",
+    {
+      schema: {
+        description: "Atualiza um item do orçamento",
+        tags: ["Orçamentos"],
+        summary: "Atualizar item",
+        operationId: "updateQuoteItem",
+        security: [{ bearerAuth: [] }],
+        consumes: ["application/json"],
+        params: {
+          type: "object",
+          required: ["companyId", "quoteId", "itemId"],
+          properties: {
+            companyId: { type: "string", description: "ID público da empresa" },
+            quoteId: { type: "string", description: "ID público do orçamento" },
+            itemId: { type: "integer", description: "ID interno do item" }, // troque para string se for UUID
+          },
+        },
+        body: { $ref: "QuoteItemUpdatePayload#" },
+        response: {
+          200: { $ref: "QuoteResponse#" },
+          400: { $ref: "ErrorResponse#" },
+          401: { $ref: "ErrorResponse#" },
+          403: { $ref: "ErrorResponse#" },
+          404: { $ref: "ErrorResponse#" },
+          422: { $ref: "ErrorResponse#" },
+          500: { $ref: "ErrorResponse#" },
+        },
+      },
+      ...writePreHandler,
+    },
+    async (request, reply) => {
+      const updatedQuote = await handleServiceCall(
+        reply,
+        services.quote.updateQuoteItem.bind(services.quote),
+        fastify,
+        request.params.companyId,
+        request.params.quoteId,
+        request.params.itemId,
+        request.body
+      );
+      if (updatedQuote) reply.send(updatedQuote);
+    }
+  );
+
+  // DELETE item
+  fastify.delete(
+    "/:companyId/quotes/:quoteId/items/:itemId",
+    {
+      schema: {
+        description: "Remove um item do orçamento",
+        tags: ["Orçamentos"],
+        summary: "Remover item",
+        operationId: "deleteQuoteItem",
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: "object",
+          required: ["companyId", "quoteId", "itemId"],
+          properties: {
+            companyId: { type: "string", description: "ID público da empresa" },
+            quoteId: { type: "string", description: "ID público do orçamento" },
+            itemId: { type: "integer", description: "ID interno do item" }, // troque para string se for UUID
+          },
+        },
+        response: {
+          200: { $ref: "QuoteResponse#" },
+          400: { $ref: "ErrorResponse#" },
+          401: { $ref: "ErrorResponse#" },
+          403: { $ref: "ErrorResponse#" },
+          404: { $ref: "ErrorResponse#" },
+          422: { $ref: "ErrorResponse#" },
+          500: { $ref: "ErrorResponse#" },
+        },
+      },
+      ...writePreHandler,
+    },
+    async (request, reply) => {
+      const updatedQuote = await handleServiceCall(
+        reply,
+        services.quote.deleteQuoteItem.bind(services.quote),
+        fastify,
+        request.params.companyId,
+        request.params.quoteId,
+        request.params.itemId
+      );
+      if (updatedQuote) reply.send(updatedQuote);
+    }
+  );
+
   // --- ROTAS DE CRUD PARA ORÇAMENTOS ---
 
   // POST /api/companies/:companyId/quotes (OPERAÇÃO DE ESCRITA)
