@@ -1,0 +1,5000 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Empresor API",
+    "description": "API para gerenciamento empresarial",
+    "version": "1.0.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "def-0": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID público do usuário" },
+          "name": { "type": "string", "description": "Nome do usuário" },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail do usuário"
+          },
+          "role": {
+            "type": "string",
+            "description": "Papel do usuário (ex: user, admin)"
+          }
+        },
+        "title": "UserAuthResponse"
+      },
+      "def-1": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "Token de acesso JWT"
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "Token de atualização JWT"
+          }
+        },
+        "title": "AuthTokens"
+      },
+      "def-2": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "description": "Código de status HTTP do erro"
+          },
+          "error": {
+            "type": "string",
+            "description": "Nome do erro HTTP (ex: Bad Request)"
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensagem detalhada do erro"
+          }
+        },
+        "title": "ErrorResponse"
+      },
+      "def-3": {
+        "type": "object",
+        "properties": { "message": { "type": "string" } },
+        "title": "SuccessMessage"
+      },
+      "def-4": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "company_id": { "type": "string" },
+          "name": { "type": "string" },
+          "email": { "type": ["null", "string"], "format": "email" },
+          "phone_number": { "type": ["null", "string"] },
+          "document_number": { "type": ["null", "string"] },
+          "address_street": { "type": ["null", "string"] },
+          "address_city": { "type": ["null", "string"] },
+          "address_state": { "type": ["null", "string"] },
+          "address_zip_code": { "type": ["null", "string"] },
+          "notes": { "type": ["null", "string"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        },
+        "title": "ClientResponse"
+      },
+      "def-5": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "maxLength": 255 },
+          "email": { "type": ["string", "null"], "format": "email" },
+          "phone_number": { "type": ["string", "null"] },
+          "document_number": { "type": ["string", "null"] },
+          "address_street": { "type": ["string", "null"] },
+          "address_city": { "type": ["string", "null"] },
+          "address_state": { "type": ["string", "null"] },
+          "address_zip_code": { "type": ["string", "null"] },
+          "notes": { "type": ["string", "null"] }
+        },
+        "required": ["name"],
+        "title": "ClientCreatePayload"
+      },
+      "def-6": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "maxLength": 255 },
+          "email": { "type": ["string", "null"], "format": "email" },
+          "phone_number": { "type": ["string", "null"] },
+          "document_number": { "type": ["string", "null"] },
+          "address_street": { "type": ["string", "null"] },
+          "address_city": { "type": ["string", "null"] },
+          "address_state": { "type": ["string", "null"] },
+          "address_zip_code": { "type": ["string", "null"] },
+          "notes": { "type": ["string", "null"] }
+        },
+        "minProperties": 1,
+        "title": "ClientUpdatePayload"
+      },
+      "def-7": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID público da Empresa" },
+          "owner_id": {
+            "type": "string",
+            "description": "ID do Usuário Proprietário"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Nome fantasia ou nome de exibição"
+          },
+          "legal_name": {
+            "type": ["null", "string"],
+            "maxLength": 255,
+            "description": "Razão Social"
+          },
+          "document_number": {
+            "type": ["null", "string"],
+            "maxLength": 50,
+            "description": "CNPJ, CPF (se aplicável)"
+          },
+          "email": {
+            "type": ["null", "string"],
+            "format": "email",
+            "maxLength": 255,
+            "description": "E-mail de contato da empresa"
+          },
+          "phone_number": {
+            "type": ["null", "string"],
+            "maxLength": 50,
+            "description": "Telefone de contato da empresa"
+          },
+          "address_street": {
+            "type": ["null", "string"],
+            "maxLength": 255,
+            "description": "Logradouro"
+          },
+          "address_number": {
+            "type": ["null", "string"],
+            "maxLength": 50,
+            "description": "Número"
+          },
+          "address_complement": {
+            "type": ["null", "string"],
+            "maxLength": 255,
+            "description": "Complemento"
+          },
+          "address_neighborhood": {
+            "type": ["null", "string"],
+            "maxLength": 100,
+            "description": "Bairro"
+          },
+          "address_city": {
+            "type": ["null", "string"],
+            "maxLength": 100,
+            "description": "Cidade"
+          },
+          "address_state": {
+            "type": ["null", "string"],
+            "maxLength": 50,
+            "description": "Estado/UF"
+          },
+          "address_zip_code": {
+            "type": ["null", "string"],
+            "maxLength": 20,
+            "description": "CEP"
+          },
+          "address_country": {
+            "type": ["null", "string"],
+            "maxLength": 50,
+            "description": "País (Padrão: BR)",
+            "default": "BR"
+          },
+          "logo_url": {
+            "type": ["null", "string"],
+            "format": "url",
+            "maxLength": 512,
+            "description": "URL do logo"
+          },
+          "pdf_preferences": {
+            "type": ["null", "object"],
+            "description": "Preferências para geração de PDF",
+            "properties": {
+              "template_id": { "type": "string" },
+              "cor_primaria": { "type": "string" },
+              "mostrar_logo_rodape": { "type": "boolean" }
+            },
+            "additionalProperties": true,
+            "default": {}
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Status da empresa (ex: active, inactive)",
+            "default": "active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data de criação"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data da última atualização"
+          }
+        },
+        "title": "CompanyResponse"
+      },
+      "def-8": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Nome fantasia ou nome de exibição"
+          },
+          "legal_name": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Razão Social"
+          },
+          "document_number": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "CNPJ, CPF (se aplicável)"
+          },
+          "email": {
+            "type": ["string", "null"],
+            "format": "email",
+            "maxLength": 255,
+            "description": "E-mail de contato da empresa"
+          },
+          "phone_number": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "Telefone de contato da empresa"
+          },
+          "address_street": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Logradouro"
+          },
+          "address_number": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "Número"
+          },
+          "address_complement": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Complemento"
+          },
+          "address_neighborhood": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "Bairro"
+          },
+          "address_city": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "Cidade"
+          },
+          "address_state": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "Estado/UF"
+          },
+          "address_zip_code": {
+            "type": ["string", "null"],
+            "maxLength": 20,
+            "description": "CEP"
+          },
+          "address_country": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "País (Padrão: BR)",
+            "default": "BR"
+          },
+          "pdf_preferences": {
+            "type": ["object", "null"],
+            "description": "Preferências para geração de PDF",
+            "properties": {
+              "template_id": { "type": "string" },
+              "cor_primaria": { "type": "string" },
+              "mostrar_logo_rodape": { "type": "boolean" }
+            },
+            "additionalProperties": true,
+            "default": {}
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Status da empresa (ex: active, inactive)",
+            "default": "active"
+          }
+        },
+        "required": ["name"],
+        "title": "CompanyCreatePayload"
+      },
+      "def-9": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Nome fantasia ou nome de exibição",
+            "minLength": 1
+          },
+          "legal_name": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Razão Social"
+          },
+          "document_number": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "CNPJ, CPF (se aplicável)"
+          },
+          "email": {
+            "type": ["string", "null"],
+            "format": "email",
+            "maxLength": 255,
+            "description": "E-mail de contato da empresa"
+          },
+          "phone_number": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "Telefone de contato da empresa"
+          },
+          "address_street": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Logradouro"
+          },
+          "address_number": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "Número"
+          },
+          "address_complement": {
+            "type": ["string", "null"],
+            "maxLength": 255,
+            "description": "Complemento"
+          },
+          "address_neighborhood": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "Bairro"
+          },
+          "address_city": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "Cidade"
+          },
+          "address_state": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "Estado/UF"
+          },
+          "address_zip_code": {
+            "type": ["string", "null"],
+            "maxLength": 20,
+            "description": "CEP"
+          },
+          "address_country": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "País (Padrão: BR)",
+            "default": "BR"
+          },
+          "pdf_preferences": {
+            "type": ["object", "null"],
+            "description": "Preferências para geração de PDF",
+            "properties": {
+              "template_id": { "type": "string" },
+              "cor_primaria": { "type": "string" },
+              "mostrar_logo_rodape": { "type": "boolean" }
+            },
+            "additionalProperties": true,
+            "default": {}
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Status da empresa (ex: active, inactive)",
+            "default": "active"
+          }
+        },
+        "minProperties": 1,
+        "title": "CompanyUpdatePayload"
+      },
+      "def-10": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Número da página"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Itens por página"
+          },
+          "name": {
+            "type": "string",
+            "description": "Filtrar por nome (busca parcial)"
+          },
+          "status": { "type": "string", "description": "Filtrar por status" },
+          "owner_id": {
+            "type": "string",
+            "description": "Filtrar por ID do proprietário"
+          },
+          "document_number": {
+            "type": "string",
+            "description": "Filtrar por número do documento"
+          }
+        },
+        "title": "CompanyListQueryString"
+      },
+      "def-11": {
+        "type": "object",
+        "properties": {
+          "validationCode": {
+            "type": "string",
+            "description": "Código de 6 dígitos recebido por e-mail."
+          }
+        },
+        "required": ["validationCode"],
+        "title": "CompanyVerifyPayload"
+      },
+      "def-12": {
+        "type": "object",
+        "description": "Objeto com as permissões granulares do usuário.",
+        "properties": {
+          "can_view_clients": { "type": "boolean", "default": true },
+          "can_create_quotes": { "type": "boolean", "default": true },
+          "can_edit_settings": { "type": "boolean", "default": false }
+        },
+        "additionalProperties": true,
+        "title": "CompanySharePermissions"
+      },
+      "def-13": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail do usuário com quem compartilhar."
+          },
+          "permissions": { "$ref": "#/components/schemas/def-12" }
+        },
+        "required": ["email", "permissions"],
+        "title": "CompanySharePayload"
+      },
+      "def-14": {
+        "type": "object",
+        "properties": {
+          "share_id": { "type": "integer" },
+          "user_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "permissions": { "$ref": "#/components/schemas/def-12" },
+          "status": { "type": "string" },
+          "shared_at": { "type": "string", "format": "date-time" }
+        },
+        "title": "CompanyShareResponse"
+      },
+      "def-15": {
+        "type": "object",
+        "properties": {
+          "company_id": { "type": "integer" },
+          "client_id": { "type": "integer" },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "sent",
+              "viewed",
+              "accepted",
+              "rejected",
+              "expired",
+              "invoiced"
+            ]
+          },
+          "date_from": { "type": "string", "format": "date" },
+          "date_to": { "type": "string", "format": "date" },
+          "value_min": { "type": "number" },
+          "value_max": { "type": "number" },
+          "page": { "type": "integer", "minimum": 1, "default": 1 },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        },
+        "title": "DashboardFilters"
+      },
+      "def-16": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "total": { "type": "integer" },
+          "total_pages": { "type": "integer" }
+        },
+        "title": "PaginationResponse"
+      },
+      "def-17": {
+        "type": "object",
+        "properties": {
+          "total_quotations": { "type": "integer" },
+          "draft_quotations": { "type": "integer" },
+          "sent_quotations": { "type": "integer" },
+          "viewed_quotations": { "type": "integer" },
+          "accepted_quotations": { "type": "integer" },
+          "rejected_quotations": { "type": "integer" },
+          "expired_quotations": { "type": "integer" },
+          "invoiced_quotations": { "type": "integer" },
+          "total_value": { "type": "number" },
+          "accepted_value": { "type": "number" },
+          "monthly_stats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": { "type": "string" },
+                "year": { "type": "integer" },
+                "count": { "type": "integer" },
+                "value": { "type": "number" }
+              }
+            }
+          }
+        },
+        "title": "DashboardSummaryResponse"
+      },
+      "def-18": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "quote_number": { "type": "string" },
+          "status": { "type": "string" },
+          "notes": { "type": ["null", "string"] },
+          "total_amount_cents": { "type": "integer" },
+          "issue_date": { "type": "string", "format": "date" },
+          "expiry_date": { "type": ["null", "string"], "format": "date" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "company": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          },
+          "client": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "email": { "type": ["null", "string"] }
+            }
+          }
+        },
+        "title": "DashboardQuotationItem"
+      },
+      "def-19": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/def-18" }
+          },
+          "pagination": { "$ref": "#/components/schemas/def-16" }
+        },
+        "title": "DashboardQuotationsResponse"
+      },
+      "def-20": {
+        "type": "object",
+        "properties": {
+          "company_id": { "type": "string" },
+          "company_name": { "type": "string" },
+          "total_quotations": { "type": "integer" },
+          "draft_quotations": { "type": "integer" },
+          "sent_quotations": { "type": "integer" },
+          "viewed_quotations": { "type": "integer" },
+          "accepted_quotations": { "type": "integer" },
+          "rejected_quotations": { "type": "integer" },
+          "expired_quotations": { "type": "integer" },
+          "invoiced_quotations": { "type": "integer" },
+          "total_value": { "type": "number" },
+          "accepted_value": { "type": "number" }
+        },
+        "title": "CompanyStatsItem"
+      },
+      "def-21": {
+        "type": "object",
+        "properties": {
+          "period": { "type": "string" },
+          "draft": { "type": "integer" },
+          "sent": { "type": "integer" },
+          "viewed": { "type": "integer" },
+          "accepted": { "type": "integer" },
+          "rejected": { "type": "integer" },
+          "expired": { "type": "integer" },
+          "invoiced": { "type": "integer" },
+          "total_value": { "type": "number" }
+        },
+        "title": "TimelineItem"
+      },
+      "def-22": {
+        "type": "object",
+        "properties": {
+          "client_id": { "type": "string" },
+          "client_name": { "type": "string" },
+          "client_email": { "type": ["null", "string"] },
+          "total_quotations": { "type": "integer" },
+          "accepted_quotations": { "type": "integer" },
+          "total_value": { "type": "number" },
+          "accepted_value": { "type": "number" },
+          "acceptance_rate": { "type": "number" }
+        },
+        "title": "TopClientItem"
+      },
+      "def-23": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID público da notificação"
+          },
+          "type": { "type": "string", "description": "Tipo da notificação" },
+          "title": { "type": "string", "description": "Título da notificação" },
+          "content": {
+            "type": "string",
+            "description": "Conteúdo da notificação"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "normal", "high", "urgent"],
+            "description": "Prioridade da notificação"
+          },
+          "action_url": {
+            "type": ["null", "string"],
+            "description": "URL de ação opcional"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Dados adicionais da notificação"
+          },
+          "is_read": {
+            "type": "boolean",
+            "description": "Indica se a notificação foi lida pelo usuário"
+          },
+          "read_at": {
+            "type": ["null", "string"],
+            "format": "date-time",
+            "description": "Data/hora quando a notificação foi lida"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data de criação da notificação"
+          },
+          "expires_at": {
+            "type": ["null", "string"],
+            "format": "date-time",
+            "description": "Data de expiração da notificação"
+          }
+        },
+        "title": "NotificationResponse"
+      },
+      "def-24": {
+        "type": "object",
+        "properties": {
+          "total_notifications": {
+            "type": "integer",
+            "description": "Total de notificações para o usuário"
+          },
+          "unread_count": {
+            "type": "integer",
+            "description": "Quantidade de notificações não lidas"
+          },
+          "urgent_unread_count": {
+            "type": "integer",
+            "description": "Quantidade de notificações urgentes não lidas"
+          }
+        },
+        "title": "NotificationSummary"
+      },
+      "def-25": {
+        "type": "object",
+        "properties": {
+          "notification_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "description": "Array de IDs das notificações para marcar como lidas"
+          }
+        },
+        "required": ["notification_ids"],
+        "title": "MarkAsReadPayload"
+      },
+      "def-26": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID do produto" },
+          "company_id": { "type": "string", "description": "ID da empresa" },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "Nome do produto/serviço"
+          },
+          "description": {
+            "type": ["null", "string"],
+            "description": "Descrição detalhada do produto"
+          },
+          "sku": {
+            "type": ["null", "string"],
+            "maxLength": 100,
+            "description": "Código SKU do produto"
+          },
+          "unit_price_cents": {
+            "type": "integer",
+            "description": "Preço unitário em centavos"
+          },
+          "unit": {
+            "type": ["null", "string"],
+            "maxLength": 50,
+            "description": "Unidade de medida (ex: un, kg, hr)"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Se o produto está ativo"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data de criação"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data da última atualização"
+          }
+        },
+        "title": "ProductResponse"
+      },
+      "def-27": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 255,
+            "description": "Nome do produto/serviço"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Descrição detalhada do produto"
+          },
+          "sku": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "Código SKU do produto (único por empresa)"
+          },
+          "unit_price_cents": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Preço unitário em centavos"
+          },
+          "unit": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "Unidade de medida (ex: un, kg, hr, m²)"
+          },
+          "is_active": {
+            "type": "boolean",
+            "default": true,
+            "description": "Se o produto deve estar ativo"
+          }
+        },
+        "required": ["name"],
+        "title": "ProductCreatePayload"
+      },
+      "def-28": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 255,
+            "description": "Nome do produto/serviço"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Descrição detalhada do produto"
+          },
+          "sku": {
+            "type": ["string", "null"],
+            "maxLength": 100,
+            "description": "Código SKU do produto (único por empresa)"
+          },
+          "unit_price_cents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Preço unitário em centavos"
+          },
+          "unit": {
+            "type": ["string", "null"],
+            "maxLength": 50,
+            "description": "Unidade de medida"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Se o produto deve estar ativo"
+          }
+        },
+        "minProperties": 1,
+        "title": "ProductUpdatePayload"
+      },
+      "def-29": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Número da página"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10,
+            "description": "Itens por página"
+          },
+          "name": {
+            "type": "string",
+            "description": "Filtrar por nome (busca parcial)"
+          },
+          "sku": { "type": "string", "description": "Filtrar por SKU" },
+          "is_active": {
+            "type": "boolean",
+            "description": "Filtrar por status ativo/inativo"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Filtrar por unidade de medida"
+          }
+        },
+        "title": "ProductListQueryString"
+      },
+      "def-30": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "description": "ID do item" },
+          "product_id": {
+            "type": ["null", "string"],
+            "description": "ID do produto (se vinculado ao catálogo)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Descrição do produto/serviço"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0.01,
+            "description": "Quantidade"
+          },
+          "unit_price_cents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Preço unitário em centavos"
+          },
+          "total_price_cents": {
+            "type": "integer",
+            "description": "Preço total em centavos (quantity * unit_price)"
+          },
+          "item_order": {
+            "type": ["null", "integer"],
+            "description": "Ordem do item no orçamento"
+          }
+        },
+        "title": "QuoteItem"
+      },
+      "def-31": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID público do orçamento" },
+          "company_id": { "type": "string", "description": "ID da empresa" },
+          "client_id": { "type": "string", "description": "ID do cliente" },
+          "created_by_user_id": {
+            "type": ["null", "string"],
+            "description": "ID do usuário que criou"
+          },
+          "quote_number": {
+            "type": "string",
+            "description": "Número do orçamento"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "sent",
+              "viewed",
+              "accepted",
+              "rejected",
+              "expired",
+              "invoiced"
+            ],
+            "description": "Status do orçamento"
+          },
+          "issue_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de emissão"
+          },
+          "expiry_date": {
+            "type": ["null", "string"],
+            "format": "date",
+            "description": "Data de validade"
+          },
+          "notes": {
+            "type": ["null", "string"],
+            "description": "Observações para o cliente"
+          },
+          "internal_notes": {
+            "type": ["null", "string"],
+            "description": "Observações internas"
+          },
+          "terms_and_conditions_content": {
+            "type": ["null", "string"],
+            "description": "Termos e condições específicos do orçamento"
+          },
+          "subtotal_cents": {
+            "type": "integer",
+            "description": "Subtotal em centavos"
+          },
+          "discount_type": {
+            "type": ["null", "string"],
+            "enum": ["percentage", "fixed_amount", null],
+            "description": "Tipo de desconto"
+          },
+          "discount_value_cents": {
+            "type": ["null", "integer"],
+            "description": "Valor do desconto aplicado em centavos"
+          },
+          "tax_amount_cents": {
+            "type": ["null", "integer"],
+            "description": "Valor do imposto em centavos"
+          },
+          "total_amount_cents": {
+            "type": "integer",
+            "description": "Valor total em centavos"
+          },
+          "currency": {
+            "type": "string",
+            "default": "BRL",
+            "description": "Moeda"
+          },
+          "pdf_url": {
+            "type": ["null", "string"],
+            "description": "URL do PDF gerado"
+          },
+          "accepted_at": {
+            "type": ["null", "string"],
+            "format": "date-time",
+            "description": "Data de aceite"
+          },
+          "rejected_at": {
+            "type": ["null", "string"],
+            "format": "date-time",
+            "description": "Data de rejeição"
+          },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "client": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "email": { "type": ["null", "string"] },
+              "phone_number": { "type": ["null", "string"] },
+              "document_number": { "type": ["null", "string"] }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/def-30" }
+          }
+        },
+        "title": "QuoteResponse"
+      },
+      "def-32": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "client_id": { "type": "string", "description": "ID do cliente" },
+          "quote_number": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Número do orçamento (único por empresa)"
+          },
+          "issue_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de emissão (padrão: hoje)"
+          },
+          "expiry_date": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Data de validade"
+          },
+          "notes": {
+            "type": ["string", "null"],
+            "description": "Observações para o cliente"
+          },
+          "internal_notes": {
+            "type": ["string", "null"],
+            "description": "Observações internas"
+          },
+          "terms_and_conditions_content": {
+            "type": ["string", "null"],
+            "description": "Termos e condições específicos"
+          },
+          "discount_type": {
+            "type": ["string", "null"],
+            "enum": ["percentage", "fixed_amount", null],
+            "description": "Tipo de desconto"
+          },
+          "discount_value_cents": {
+            "type": ["number", "integer", "null"],
+            "minimum": 0,
+            "description": "Taxa (%) se percentage; valor em centavos se fixed_amount"
+          },
+          "tax_amount_cents": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Valor do imposto em centavos"
+          },
+          "currency": {
+            "type": "string",
+            "default": "BRL",
+            "description": "Moeda"
+          },
+          "items": {
+            "type": "array",
+            "minItems": 0,
+            "default": [],
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "product_id": {
+                  "type": ["string", "null"],
+                  "description": "ID do produto (opcional)"
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Descrição do item"
+                },
+                "quantity": {
+                  "type": "number",
+                  "minimum": 0.01,
+                  "description": "Quantidade"
+                },
+                "unit_price_cents": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Preço unitário em centavos"
+                }
+              },
+              "required": ["description", "quantity", "unit_price_cents"]
+            }
+          }
+        },
+        "required": ["client_id", "quote_number"],
+        "title": "QuoteCreatePayload"
+      },
+      "def-33": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "client_id": { "type": "string" },
+          "quote_number": { "type": "string", "minLength": 1, "maxLength": 50 },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "sent",
+              "viewed",
+              "accepted",
+              "rejected",
+              "expired",
+              "invoiced"
+            ]
+          },
+          "issue_date": { "type": "string", "format": "date" },
+          "expiry_date": { "type": ["string", "null"], "format": "date" },
+          "notes": { "type": ["string", "null"] },
+          "internal_notes": { "type": ["string", "null"] },
+          "terms_and_conditions_content": { "type": ["string", "null"] },
+          "discount_type": {
+            "type": ["string", "null"],
+            "enum": ["percentage", "fixed_amount", null]
+          },
+          "discount_value_cents": {
+            "type": ["number", "integer", "null"],
+            "minimum": 0
+          },
+          "tax_amount_cents": { "type": ["integer", "null"], "minimum": 0 },
+          "items": {
+            "type": "array",
+            "minItems": 0,
+            "default": [],
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": ["integer", "null"],
+                  "description": "ID do item (para atualização)"
+                },
+                "product_id": { "type": ["string", "null"] },
+                "description": { "type": "string", "minLength": 1 },
+                "quantity": { "type": "number", "minimum": 0.01 },
+                "unit_price_cents": { "type": "integer", "minimum": 0 }
+              },
+              "required": ["description", "quantity", "unit_price_cents"]
+            }
+          }
+        },
+        "minProperties": 1,
+        "title": "QuoteUpdatePayload"
+      },
+      "def-34": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "minimum": 1, "default": 1 },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "sent",
+              "viewed",
+              "accepted",
+              "rejected",
+              "expired",
+              "invoiced"
+            ]
+          },
+          "client_id": { "type": "string" },
+          "quote_number": { "type": "string" },
+          "issue_date_from": { "type": "string", "format": "date" },
+          "issue_date_to": { "type": "string", "format": "date" },
+          "expiry_date_from": { "type": "string", "format": "date" },
+          "expiry_date_to": { "type": "string", "format": "date" }
+        },
+        "title": "QuoteListQueryString"
+      },
+      "def-35": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "quantity", "unit_price_cents"],
+        "description": "Payload para adicionar item ao orçamento",
+        "properties": {
+          "product_id": {
+            "type": ["string", "null"],
+            "description": "ID público do produto (opcional)"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Descrição do item"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0.01,
+            "description": "Quantidade (aceita fracionado)"
+          },
+          "unit_price_cents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Preço unitário em centavos"
+          }
+        },
+        "title": "QuoteItemAddPayload"
+      },
+      "def-36": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "description": "Payload para atualizar item do orçamento (envie apenas campos que quer alterar)",
+        "properties": {
+          "product_id": {
+            "type": ["string", "null"],
+            "description": "ID público do produto (ou null para desvincular)"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Descrição do item"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0.01,
+            "description": "Quantidade"
+          },
+          "unit_price_cents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Preço unitário em centavos"
+          }
+        },
+        "title": "QuoteItemUpdatePayload"
+      },
+      "def-37": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID público do usuário" },
+          "name": { "type": "string", "description": "Nome do usuário" },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail do usuário"
+          },
+          "role": { "type": "string", "description": "Papel do usuário" },
+          "status": {
+            "type": "string",
+            "description": "Status da conta do usuário"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data de criação da conta"
+          },
+          "active_plan": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "plan_name": {
+                "type": "string",
+                "description": "Nome do plano atual"
+              },
+              "status": {
+                "type": "string",
+                "description": "Status da assinatura/teste"
+              },
+              "trial_ends_at": {
+                "type": ["null", "string"],
+                "format": "date-time",
+                "description": "Data de término do teste (se aplicável)"
+              },
+              "current_period_ends_at": {
+                "type": ["null", "string"],
+                "format": "date-time",
+                "description": "Data de término do período atual da assinatura paga (se aplicável)"
+              }
+            }
+          }
+        },
+        "title": "UserProfileResponse"
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "summary": "Registrar Novo Usuário",
+        "tags": ["Autenticação"],
+        "description": "Registra um novo usuário no sistema.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "description": "Nome completo do usuário"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Endereço de e-mail único para login"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "description": "Senha (mínimo 8 caracteres)"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Usuário registrado com sucesso. Retorna dados do usuário e tokens.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Usuário registrado com sucesso. Retorna dados do usuário e tokens.",
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/def-0" },
+                    "tokens": { "$ref": "#/components/schemas/def-1" }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito - E-mail já cadastrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Conflito - E-mail já cadastrado.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Erro interno do servidor.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login de Usuário",
+        "tags": ["Autenticação"],
+        "description": "Autentica um usuário existente e retorna tokens de acesso.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "E-mail do usuário"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "Senha do usuário"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Login bem-sucedido. Retorna dados do usuário e tokens.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Login bem-sucedido. Retorna dados do usuário e tokens.",
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/def-0" },
+                    "tokens": { "$ref": "#/components/schemas/def-1" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado - Credenciais inválidas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Não autorizado - Credenciais inválidas.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Proibido - Conta de usuário não está ativa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Proibido - Conta de usuário não está ativa.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Erro interno do servidor.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/forgot-password": {
+      "post": {
+        "summary": "Solicitar Recuperação de Senha",
+        "tags": ["Autenticação"],
+        "description": "Inicia o processo de recuperação de senha para um e-mail fornecido.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "E-mail do usuário para recuperação"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Instruções de recuperação enviadas (se o e-mail existir).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Instruções de recuperação enviadas (se o e-mail existir).",
+                  "$ref": "#/components/schemas/def-3"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Erro interno do servidor.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "summary": "Redefinir Senha",
+        "tags": ["Autenticação"],
+        "description": "Redefine a senha do usuário usando um token de recuperação válido.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token", "newPassword"],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "description": "Token de recuperação recebido por e-mail"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 8,
+                    "description": "Nova senha (mínimo 8 caracteres)"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Senha redefinida com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Senha redefinida com sucesso.",
+                  "$ref": "#/components/schemas/def-3"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida - Token inválido, expirado ou senha não atende aos critérios.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Requisição inválida - Token inválido, expirado ou senha não atende aos critérios.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Erro interno do servidor.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "summary": "Atualizar Access Token",
+        "tags": ["Autenticação"],
+        "description": "Gera um novo accessToken usando um refreshToken válido.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refreshToken"],
+                "properties": {
+                  "refreshToken": {
+                    "type": "string",
+                    "description": "O refreshToken JWT válido."
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Novo accessToken (e opcionalmente refreshToken) gerado com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Novo accessToken (e opcionalmente refreshToken) gerado com sucesso.",
+                  "$ref": "#/components/schemas/def-1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado - Refresh token inválido, expirado ou revogado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Não autorizado - Refresh token inválido, expirado ou revogado.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Erro interno do servidor.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Logout de Usuário",
+        "tags": ["Autenticação"],
+        "description": "Invalida o refreshToken do usuário no servidor. O cliente deve remover os tokens localmente.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Logout bem-sucedido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Logout bem-sucedido.",
+                  "$ref": "#/components/schemas/def-3"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Não autorizado.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno do servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Erro interno do servidor.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/": {
+      "post": {
+        "summary": "Criar Empresa",
+        "tags": ["Empresas"],
+        "description": "Cria uma nova empresa.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-8" }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": {
+            "description": "Empresa criada com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Empresa criada com sucesso.",
+                  "$ref": "#/components/schemas/def-7"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar Empresas",
+        "tags": ["Empresas"],
+        "description": "Lista todas as empresas do usuário autenticado ou todas (para admin).",
+        "parameters": [
+          {
+            "schema": { "type": "integer", "minimum": 1, "default": 1 },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Número da página"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Itens por página"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "description": "Filtrar por nome (busca parcial)"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Filtrar por status"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "query",
+            "name": "owner_id",
+            "required": false,
+            "description": "Filtrar por ID do proprietário"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "query",
+            "name": "document_number",
+            "required": false,
+            "description": "Filtrar por número do documento"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Lista de empresas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Lista de empresas.",
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/def-7" }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "totalItems": { "type": "integer" },
+                        "totalPages": { "type": "integer" },
+                        "currentPage": { "type": "integer" },
+                        "pageSize": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{id}": {
+      "get": {
+        "summary": "Obter Empresa por ID",
+        "tags": ["Empresas"],
+        "description": "Obtém os detalhes de uma empresa específica.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "Company ID"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Detalhes da empresa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Detalhes da empresa.",
+                  "$ref": "#/components/schemas/def-7"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Atualizar Empresa",
+        "tags": ["Empresas"],
+        "description": "Atualiza os detalhes de uma empresa específica.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-9" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "Company ID"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Empresa atualizada com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Empresa atualizada com sucesso.",
+                  "$ref": "#/components/schemas/def-7"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remover Empresa",
+        "tags": ["Empresas"],
+        "description": "Remove uma empresa específica (soft delete ou hard delete dependendo da implementação).",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "Company ID"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-3" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{id}/logo": {
+      "post": {
+        "summary": "Upload de Logo da Empresa",
+        "tags": ["Empresas"],
+        "description": "Faz upload do logo para uma empresa específica. Requer 'Content-Type: multipart/form-data'.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "Company ID"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Logo atualizado com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Logo atualizado com sucesso.",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "logo_url": { "type": "string", "format": "url" }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{id}/verify": {
+      "post": {
+        "summary": "Verificar e Ativar Empresa",
+        "tags": ["Empresas"],
+        "description": "Verifica e ativa uma empresa usando o código enviado por e-mail.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-11" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "Company ID"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Empresa ativada com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Empresa ativada com sucesso.",
+                  "$ref": "#/components/schemas/def-7"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{id}/resend-validation": {
+      "post": {
+        "summary": "Reenviar Código de Verificação",
+        "tags": ["Empresas"],
+        "description": "Reenvia o e-mail com o código de verificação para uma empresa com status pendente.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "Company ID"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-3" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/shares": {
+      "post": {
+        "summary": "Compartilhar Empresa",
+        "tags": ["Empresas - Compartilhamento"],
+        "description": "Compartilha uma empresa com outro usuário, definindo suas permissões.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-13" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "integer" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-14" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar Compartilhamentos",
+        "tags": ["Empresas - Compartilhamento"],
+        "description": "Lista os compartilhamentos de uma empresa.",
+        "parameters": [
+          {
+            "schema": { "type": "integer" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/def-14" }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/shares/{userId}": {
+      "delete": {
+        "summary": "Remover Compartilhamento",
+        "tags": ["Empresas - Compartilhamento"],
+        "description": "Remove o compartilhamento de uma empresa com um usuário.",
+        "parameters": [
+          {
+            "schema": { "type": "integer" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "integer" },
+            "in": "path",
+            "name": "userId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-3" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/clients": {
+      "post": {
+        "summary": "Criar Cliente",
+        "tags": ["Clientes"],
+        "description": "Cria um novo cliente para uma empresa.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-5" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-4" }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar Clientes",
+        "tags": ["Clientes"],
+        "description": "Lista os clientes de uma empresa.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/def-4" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/clients/{clientId}": {
+      "get": {
+        "summary": "Obter Cliente por ID",
+        "tags": ["Clientes"],
+        "description": "Obtém um cliente específico pelo seu ID.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "clientId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-4" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Atualizar Cliente",
+        "tags": ["Clientes"],
+        "description": "Atualiza um cliente específico.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-6" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "clientId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-4" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Excluir Cliente",
+        "tags": ["Clientes"],
+        "description": "Exclui um cliente específico.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "clientId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-3" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/products": {
+      "post": {
+        "summary": "Criar Produto",
+        "tags": ["Produtos"],
+        "description": "Cria um novo produto para uma empresa.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-27" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": {
+            "description": "Produto criado com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Produto criado com sucesso.",
+                  "$ref": "#/components/schemas/def-26"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar Produtos",
+        "tags": ["Produtos"],
+        "description": "Lista os produtos de uma empresa.",
+        "parameters": [
+          {
+            "schema": { "type": "integer", "minimum": 1, "default": 1 },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Número da página"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Itens por página"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "description": "Filtrar por nome (busca parcial)"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "query",
+            "name": "sku",
+            "required": false,
+            "description": "Filtrar por SKU"
+          },
+          {
+            "schema": { "type": "boolean" },
+            "in": "query",
+            "name": "is_active",
+            "required": false,
+            "description": "Filtrar por status ativo/inativo"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "query",
+            "name": "unit",
+            "required": false,
+            "description": "Filtrar por unidade de medida"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Lista de produtos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Lista de produtos.",
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/def-26" }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "totalItems": { "type": "integer" },
+                        "totalPages": { "type": "integer" },
+                        "currentPage": { "type": "integer" },
+                        "pageSize": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/products/{productId}": {
+      "get": {
+        "summary": "Obter Produto por ID",
+        "tags": ["Produtos"],
+        "description": "Obtém um produto específico pelo seu ID.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "productId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Detalhes do produto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Detalhes do produto.",
+                  "$ref": "#/components/schemas/def-26"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Atualizar Produto",
+        "tags": ["Produtos"],
+        "description": "Atualiza um produto específico.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-28" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "productId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Produto atualizado com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Produto atualizado com sucesso.",
+                  "$ref": "#/components/schemas/def-26"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Excluir Produto",
+        "tags": ["Produtos"],
+        "description": "Exclui um produto específico.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "productId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Produto excluído com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Produto excluído com sucesso.",
+                  "$ref": "#/components/schemas/def-3"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/products/active": {
+      "get": {
+        "summary": "Listar Produtos Ativos",
+        "tags": ["Produtos"],
+        "description": "Lista apenas os produtos ativos de uma empresa.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Lista de produtos ativos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Lista de produtos ativos.",
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/def-26" }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/quotes/{quoteId}/items": {
+      "post": {
+        "operationId": "addQuoteItem",
+        "summary": "Adicionar item",
+        "tags": ["Orçamentos"],
+        "description": "Adiciona um item ao orçamento",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-35" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true,
+            "description": "ID público da empresa"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "quoteId",
+            "required": true,
+            "description": "ID público do orçamento"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-31" }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/quotes/{quoteId}/items/{itemId}": {
+      "put": {
+        "operationId": "updateQuoteItem",
+        "summary": "Atualizar item",
+        "tags": ["Orçamentos"],
+        "description": "Atualiza um item do orçamento",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-36" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true,
+            "description": "ID público da empresa"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "quoteId",
+            "required": true,
+            "description": "ID público do orçamento"
+          },
+          {
+            "schema": { "type": "integer" },
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "description": "ID interno do item"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-31" }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteQuoteItem",
+        "summary": "Remover item",
+        "tags": ["Orçamentos"],
+        "description": "Remove um item do orçamento",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true,
+            "description": "ID público da empresa"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "quoteId",
+            "required": true,
+            "description": "ID público do orçamento"
+          },
+          {
+            "schema": { "type": "integer" },
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "description": "ID interno do item"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-31" }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/quotes": {
+      "post": {
+        "summary": "Criar Orçamento",
+        "tags": ["Orçamentos"],
+        "description": "Cria um novo orçamento para uma empresa.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-32" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-31" }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Listar Orçamentos",
+        "tags": ["Orçamentos"],
+        "description": "Lista os orçamentos de uma empresa.",
+        "parameters": [
+          {
+            "schema": { "type": "integer", "minimum": 1, "default": 1 },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "sent",
+                "viewed",
+                "accepted",
+                "rejected",
+                "expired",
+                "invoiced"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "query",
+            "name": "client_id",
+            "required": false
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "query",
+            "name": "quote_number",
+            "required": false
+          },
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "issue_date_from",
+            "required": false
+          },
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "issue_date_to",
+            "required": false
+          },
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "expiry_date_from",
+            "required": false
+          },
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "expiry_date_to",
+            "required": false
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/def-31" }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "totalItems": { "type": "integer" },
+                        "totalPages": { "type": "integer" },
+                        "currentPage": { "type": "integer" },
+                        "pageSize": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/quotes/{quoteId}": {
+      "get": {
+        "summary": "Obter Orçamento por ID",
+        "tags": ["Orçamentos"],
+        "description": "Obtém um orçamento específico com todos os detalhes.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "quoteId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-31" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Atualizar Orçamento",
+        "tags": ["Orçamentos"],
+        "description": "Atualiza um orçamento específico.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-33" }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "quoteId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-31" }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Excluir Orçamento",
+        "tags": ["Orçamentos"],
+        "description": "Exclui um orçamento específico.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "quoteId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-3" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/quotes/{quoteId}/status": {
+      "put": {
+        "summary": "Atualizar Status do Orçamento",
+        "tags": ["Orçamentos"],
+        "description": "Atualiza apenas o status de um orçamento.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "sent",
+                      "viewed",
+                      "accepted",
+                      "rejected",
+                      "expired",
+                      "invoiced"
+                    ]
+                  }
+                },
+                "required": ["status"]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "quoteId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-31" }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/quotes/stats": {
+      "get": {
+        "summary": "Estatísticas de Orçamentos",
+        "tags": ["Orçamentos"],
+        "description": "Estatísticas dos orçamentos da empresa.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_quotes": { "type": "integer" },
+                    "draft_count": { "type": "integer" },
+                    "sent_count": { "type": "integer" },
+                    "accepted_count": { "type": "integer" },
+                    "rejected_count": { "type": "integer" },
+                    "total_accepted_value_cents": { "type": "integer" },
+                    "avg_accepted_value_cents": { "type": "integer" },
+                    "acceptance_rate": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/quotes/expiring": {
+      "get": {
+        "summary": "Orçamentos Próximos ao Vencimento",
+        "tags": ["Orçamentos"],
+        "description": "Lista orçamentos próximos ao vencimento.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "default": 7
+            },
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "description": "Número de dias à frente para verificar"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "quote_number": { "type": "string" },
+                      "expiry_date": { "type": "string", "format": "date" },
+                      "total_amount_cents": { "type": "integer" },
+                      "client_name": { "type": "string" },
+                      "client_email": { "type": ["null", "string"] }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{companyId}/quotes/generate-number": {
+      "get": {
+        "summary": "Gerar Número de Orçamento",
+        "tags": ["Orçamentos"],
+        "description": "Gera um número automático para novo orçamento.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "companyId",
+            "required": true
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "quote_number": { "type": "string" } }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/summary": {
+      "get": {
+        "summary": "Resumo Dashboard",
+        "tags": ["Dashboard"],
+        "description": "Resumo geral dos orçamentos para o dashboard",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-17" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/quotations": {
+      "get": {
+        "summary": "Lista Orçamentos Dashboard",
+        "tags": ["Dashboard"],
+        "description": "Lista orçamentos com filtros para o dashboard",
+        "parameters": [
+          {
+            "schema": { "type": "integer" },
+            "in": "query",
+            "name": "company_id",
+            "required": false
+          },
+          {
+            "schema": { "type": "integer" },
+            "in": "query",
+            "name": "client_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "sent",
+                "viewed",
+                "accepted",
+                "rejected",
+                "expired",
+                "invoiced"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "date_from",
+            "required": false
+          },
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "date_to",
+            "required": false
+          },
+          {
+            "schema": { "type": "number" },
+            "in": "query",
+            "name": "value_min",
+            "required": false
+          },
+          {
+            "schema": { "type": "number" },
+            "in": "query",
+            "name": "value_max",
+            "required": false
+          },
+          {
+            "schema": { "type": "integer", "minimum": 1, "default": 1 },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-19" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/stats/companies": {
+      "get": {
+        "summary": "Estatísticas por Empresa",
+        "tags": ["Dashboard"],
+        "description": "Estatísticas de orçamentos por empresa",
+        "parameters": [
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "date_from",
+            "required": false
+          },
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "date_to",
+            "required": false
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/def-20" }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/stats/timeline": {
+      "get": {
+        "summary": "Timeline Dashboard",
+        "tags": ["Dashboard"],
+        "description": "Evolução dos orçamentos por status ao longo do tempo",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["week", "month", "quarter"],
+              "default": "month"
+            },
+            "in": "query",
+            "name": "period",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 24,
+              "default": 12
+            },
+            "in": "query",
+            "name": "months",
+            "required": false
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/def-21" }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/stats/top-clients": {
+      "get": {
+        "summary": "Top Clientes",
+        "tags": ["Dashboard"],
+        "description": "Top clientes por valor de orçamentos",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "date_from",
+            "required": false
+          },
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "date_to",
+            "required": false
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/def-22" }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/stats/conversion": {
+      "get": {
+        "summary": "Estatísticas de Conversão",
+        "tags": ["Dashboard"],
+        "description": "Estatísticas de conversão de orçamentos",
+        "parameters": [
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "date_from",
+            "required": false
+          },
+          {
+            "schema": { "type": "string", "format": "date" },
+            "in": "query",
+            "name": "date_to",
+            "required": false
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_quotes": { "type": "integer" },
+                    "sent_quotes": { "type": "integer" },
+                    "viewed_quotes": { "type": "integer" },
+                    "accepted_quotes": { "type": "integer" },
+                    "invoiced_quotes": { "type": "integer" },
+                    "view_rate": { "type": "number" },
+                    "acceptance_rate": { "type": "number" },
+                    "invoice_rate": { "type": "number" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/expiring-quotes": {
+      "get": {
+        "summary": "Orçamentos Vencendo",
+        "tags": ["Dashboard"],
+        "description": "Orçamentos próximos do vencimento",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30,
+              "default": 7
+            },
+            "in": "query",
+            "name": "days",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "quote_number": { "type": "string" },
+                      "title": { "type": "string" },
+                      "status": { "type": "string" },
+                      "expiry_date": { "type": "string", "format": "date" },
+                      "total_amount_cents": { "type": "integer" },
+                      "company_name": { "type": "string" },
+                      "client": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string" },
+                          "email": { "type": ["null", "string"] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "summary": "Obter Meu Perfil",
+        "tags": ["Usuário - Perfil"],
+        "description": "Retorna os detalhes do perfil do usuário autenticado.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Perfil do usuário retornado com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Perfil do usuário retornado com sucesso.",
+                  "$ref": "#/components/schemas/def-37"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Atualizar Meu Perfil",
+        "tags": ["Usuário - Perfil"],
+        "description": "Atualiza os detalhes do perfil do usuário autenticado.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "description": "Novo nome do usuário"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Novo e-mail do usuário (requer atenção especial se alterado)"
+                  },
+                  "currentPassword": {
+                    "type": "string",
+                    "description": "Senha atual (necessária se for alterar a senha)"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 8,
+                    "description": "Nova senha (mínimo 8 caracteres)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Perfil atualizado com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Perfil atualizado com sucesso.",
+                  "$ref": "#/components/schemas/def-37"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos ou senha atual incorreta.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Dados inválidos ou senha atual incorreta.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito - Novo e-mail já está em uso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Conflito - Novo e-mail já está em uso.",
+                  "$ref": "#/components/schemas/def-2"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Desativar Minha Conta",
+        "tags": ["Usuário - Perfil"],
+        "description": "Desativa (soft delete) a conta do usuário autenticado.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Conta desativada com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Conta desativada com sucesso.",
+                  "$ref": "#/components/schemas/def-3"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me/notifications": {
+      "get": {
+        "summary": "Listar Minhas Notificações",
+        "tags": ["Usuário - Notificações"],
+        "description": "Lista as notificações do usuário autenticado com opções de filtro e paginação.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["all", "unread", "read"],
+              "default": "all"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Filtro por status de leitura"
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "description": "Filtro por tipo de notificação"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["low", "normal", "high", "urgent"]
+            },
+            "in": "query",
+            "name": "priority",
+            "required": false,
+            "description": "Filtro por prioridade"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Número máximo de notificações por página"
+          },
+          {
+            "schema": { "type": "integer", "minimum": 0, "default": 0 },
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "description": "Número de notificações para pular (paginação)"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Lista de notificações retornada com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Lista de notificações retornada com sucesso.",
+                  "type": "object",
+                  "properties": {
+                    "notifications": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/def-23" }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "total": { "type": "integer" },
+                        "limit": { "type": "integer" },
+                        "offset": { "type": "integer" },
+                        "has_more": { "type": "boolean" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me/notifications/summary": {
+      "get": {
+        "summary": "Obter Resumo de Notificações",
+        "tags": ["Usuário - Notificações"],
+        "description": "Retorna um resumo das notificações do usuário (contadores).",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Resumo de notificações retornado com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Resumo de notificações retornado com sucesso.",
+                  "$ref": "#/components/schemas/def-24"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me/notifications/{notificationId}": {
+      "get": {
+        "summary": "Obter Notificação por ID",
+        "tags": ["Usuário - Notificações"],
+        "description": "Obtém uma notificação específica pelo seu ID.",
+        "parameters": [
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "notificationId",
+            "required": true,
+            "description": "ID público da notificação"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Notificação retornada com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Notificação retornada com sucesso.",
+                  "$ref": "#/components/schemas/def-23"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me/notifications/mark-read": {
+      "post": {
+        "summary": "Marcar Notificações como Lidas",
+        "tags": ["Usuário - Notificações"],
+        "description": "Marca uma ou múltiplas notificações como lidas.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/def-25" }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Notificações marcadas como lidas com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Notificações marcadas como lidas com sucesso.",
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "marked_count": {
+                      "type": "integer",
+                      "description": "Número de notificações marcadas como lidas"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me/notifications/mark-all-read": {
+      "post": {
+        "summary": "Marcar Todas as Notificações como Lidas",
+        "tags": ["Usuário - Notificações"],
+        "description": "Marca todas as notificações não lidas do usuário como lidas.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Todas as notificações marcadas como lidas com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Todas as notificações marcadas como lidas com sucesso.",
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "marked_count": {
+                      "type": "integer",
+                      "description": "Número de notificações marcadas como lidas"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/def-2" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": { "responses": { "200": { "description": "Default Response" } } }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:3001",
+      "description": "Servidor de desenvolvimento"
+    }
+  ]
+}
