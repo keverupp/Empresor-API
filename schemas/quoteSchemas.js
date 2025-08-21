@@ -389,6 +389,32 @@ const getQuoteByIdSchema = {
   },
 };
 
+// GET /api/companies/:companyId/quotes/:quoteId/pdf-data
+const getQuotePdfDataSchema = {
+  description: "Retorna dados do orçamento formatados para geração de PDF.",
+  tags: ["Orçamentos"],
+  summary: "Dados para PDF do Orçamento",
+  security: [{ bearerAuth: [] }],
+  params: {
+    type: "object",
+    properties: { companyId: { type: "string" }, quoteId: { type: "string" } },
+    required: ["companyId", "quoteId"],
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        data: { type: "object" },
+      },
+    },
+    401: { $ref: "ErrorResponse#" },
+    403: { $ref: "ErrorResponse#" },
+    404: { $ref: "ErrorResponse#" },
+    500: { $ref: "ErrorResponse#" },
+  },
+};
+
 // PUT /api/companies/:companyId/quotes/:quoteId
 const updateQuoteSchema = {
   description: "Atualiza um orçamento específico.",
@@ -542,6 +568,7 @@ module.exports = {
   createQuoteSchema,
   listQuotesSchema,
   getQuoteByIdSchema,
+  getQuotePdfDataSchema,
   updateQuoteSchema,
   deleteQuoteSchema,
   updateQuoteStatusSchema,
