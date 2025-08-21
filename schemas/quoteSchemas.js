@@ -389,6 +389,102 @@ const getQuoteByIdSchema = {
   },
 };
 
+// GET /api/companies/:companyId/quotes/:quoteId/pdf-data
+const getQuotePdfDataSchema = {
+  description: "Retorna dados do orçamento formatados para geração de PDF.",
+  tags: ["Orçamentos"],
+  summary: "Dados para PDF do Orçamento",
+  security: [{ bearerAuth: [] }],
+  params: {
+    type: "object",
+    properties: { companyId: { type: "string" }, quoteId: { type: "string" } },
+    required: ["companyId", "quoteId"],
+  },
+  response: {
+    200: {
+      type: "object",
+      required: ["title", "data"],
+      properties: {
+        title: { type: "string" },
+        data: {
+          type: "object",
+          required: ["logo", "watermark", "budget"],
+          properties: {
+            logo: {
+              type: "object",
+              required: ["url"],
+              properties: {
+                url: { type: "string", format: "uri" },
+              },
+            },
+            watermark: {
+              type: "object",
+              required: ["type"],
+              properties: {
+                type: { type: "string" },
+                logo: {
+                  type: "object",
+                  required: ["url"],
+                  properties: {
+                    url: { type: "string", format: "uri" },
+                  },
+                },
+              },
+            },
+            budget: {
+              type: "object",
+              required: ["number", "validUntil", "status", "company", "client", "items"],
+              properties: {
+                number: { type: "string" },
+                validUntil: { type: "string" },
+                status: { type: "string" },
+                company: {
+                  type: "object",
+                  required: ["name"],
+                  properties: {
+                    name: { type: "string" },
+                    cnpj: { type: ["string", "null"] },
+                    address: { type: ["string", "null"] },
+                    phone: { type: ["string", "null"] },
+                    email: { type: ["string", "null"] },
+                  },
+                },
+                client: {
+                  type: "object",
+                  required: ["name"],
+                  properties: {
+                    name: { type: "string" },
+                    phone: { type: ["string", "null"] },
+                  },
+                },
+                items: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["description", "quantity", "unitPrice"],
+                    properties: {
+                      description: { type: "string" },
+                      quantity: { type: "number" },
+                      unitPrice: { type: "number" },
+                    },
+                  },
+                },
+                discount: { type: "number" },
+                notes: { type: ["string", "null"] },
+                terms: { type: ["string", "null"] },
+              },
+            },
+          },
+        },
+      },
+    },
+    401: { $ref: "ErrorResponse#" },
+    403: { $ref: "ErrorResponse#" },
+    404: { $ref: "ErrorResponse#" },
+    500: { $ref: "ErrorResponse#" },
+  },
+};
+
 // PUT /api/companies/:companyId/quotes/:quoteId
 const updateQuoteSchema = {
   description: "Atualiza um orçamento específico.",
@@ -542,6 +638,7 @@ module.exports = {
   createQuoteSchema,
   listQuotesSchema,
   getQuoteByIdSchema,
+  getQuotePdfDataSchema,
   updateQuoteSchema,
   deleteQuoteSchema,
   updateQuoteStatusSchema,

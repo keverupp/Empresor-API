@@ -820,6 +820,103 @@ class QuoteService {
   }
 
   /**
+   * Retorna dados essenciais do orçamento para geração de PDF
+   */
+  async getQuotePdfData(fastify, companyId, quoteId) {
+    const { knex } = fastify;
+    const companyInternalId = await this._resolveCompanyId(knex, companyId);
+    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
+
+    const quote = await knex("quotes as q")
+      .leftJoin("clients as c", "q.client_id", "c.id")
+      .join("companies as comp", "q.company_id", "comp.id")
+      .where({ "q.id": quoteInternalId, "q.company_id": companyInternalId })
+      .select(
+        "q.quote_number",
+        "q.expiry_date",
+        "q.status",
+        "q.notes",
+        "q.terms_and_conditions_content",
+        "q.discount_value_cents",
+        "comp.name as company_name",
+        "comp.document_number as company_document",
+        "comp.address_street",
+        "comp.address_number",
+        "comp.address_city",
+        "comp.address_state",
+        "comp.address_zip_code",
+        "comp.phone_number as company_phone",
+        "comp.email as company_email",
+        "comp.logo_url",
+        "c.name as client_name",
+        "c.phone_number as client_phone"
+      )
+      .first();
+
+    if (!quote) {
+      const error = new Error("Orçamento não encontrado nesta empresa.");
+      error.statusCode = 404;
+      error.code = "QUOTE_NOT_FOUND";
+      throw error;
+    }
+
+    const items = await knex("quote_items")
+      .where({ quote_id: quoteInternalId })
+      .select("description", "quantity", "unit_price_cents")
+      .orderBy("item_order", "asc");
+
+    const addressParts = [
+      quote.address_street &&
+        [quote.address_street, quote.address_number].filter(Boolean).join(", "),
+      [quote.address_city, quote.address_state, quote.address_zip_code]
+        .filter(Boolean)
+        .join(", "),
+    ].filter(Boolean);
+    const companyAddress = addressParts.join(" - ");
+
+    const formattedItems = items.map((item) => ({
+      description: item.description,
+      quantity: toNumber(item.quantity, 0),
+      unitPrice: toInt(item.unit_price_cents, 0) / 100,
+    }));
+
+    const discount = quote.discount_value_cents
+      ? toInt(quote.discount_value_cents, 0) / 100
+      : 0;
+
+    return {
+      title: `Orçamento ${quote.quote_number}`,
+      data: {
+        logo: { url: quote.logo_url },
+        watermark: {
+          type: "logo",
+          logo: { url: quote.logo_url },
+        },
+        budget: {
+          number: quote.quote_number,
+          validUntil: quote.expiry_date,
+          status: quote.status,
+          company: {
+            name: quote.company_name,
+            cnpj: quote.company_document,
+            address: companyAddress,
+            phone: quote.company_phone,
+            email: quote.company_email,
+          },
+          client: {
+            name: quote.client_name,
+            phone: quote.client_phone,
+          },
+          items: formattedItems,
+          discount,
+          notes: quote.notes,
+          terms: quote.terms_and_conditions_content,
+        },
+      },
+    };
+  }
+
+  /**
    * Lista orçamentos de uma empresa com paginação e filtros
    */
   async listQuotes(fastify, companyId, queryParams = {}) {

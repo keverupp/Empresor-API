@@ -286,6 +286,24 @@ module.exports = async function (fastify, opts) {
     }
   );
 
+  // GET /api/companies/:companyId/quotes/:quoteId/pdf-data (OPERAÇÃO DE LEITURA)
+  fastify.get(
+    "/:companyId/quotes/:quoteId/pdf-data",
+    { schema: schemas.getQuotePdfDataSchema, ...readPreHandler },
+    async (request, reply) => {
+      const pdfData = await handleServiceCall(
+        reply,
+        services.quote.getQuotePdfData.bind(services.quote),
+        fastify, // 1º: fastify instance
+        request.params.companyId, // 2º: companyId
+        request.params.quoteId // 3º: quoteId
+      );
+      if (pdfData) {
+        reply.send(pdfData);
+      }
+    }
+  );
+
   // PUT /api/companies/:companyId/quotes/:quoteId (OPERAÇÃO DE ESCRITA)
   fastify.put(
     "/:companyId/quotes/:quoteId",
