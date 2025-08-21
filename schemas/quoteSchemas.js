@@ -403,9 +403,79 @@ const getQuotePdfDataSchema = {
   response: {
     200: {
       type: "object",
+      required: ["title", "data"],
       properties: {
         title: { type: "string" },
-        data: { type: "object" },
+        data: {
+          type: "object",
+          required: ["logo", "watermark", "budget"],
+          properties: {
+            logo: {
+              type: "object",
+              required: ["url"],
+              properties: {
+                url: { type: "string", format: "uri" },
+              },
+            },
+            watermark: {
+              type: "object",
+              required: ["type"],
+              properties: {
+                type: { type: "string" },
+                logo: {
+                  type: "object",
+                  required: ["url"],
+                  properties: {
+                    url: { type: "string", format: "uri" },
+                  },
+                },
+              },
+            },
+            budget: {
+              type: "object",
+              required: ["number", "validUntil", "status", "company", "client", "items"],
+              properties: {
+                number: { type: "string" },
+                validUntil: { type: "string" },
+                status: { type: "string" },
+                company: {
+                  type: "object",
+                  required: ["name"],
+                  properties: {
+                    name: { type: "string" },
+                    cnpj: { type: ["string", "null"] },
+                    address: { type: ["string", "null"] },
+                    phone: { type: ["string", "null"] },
+                    email: { type: ["string", "null"] },
+                  },
+                },
+                client: {
+                  type: "object",
+                  required: ["name"],
+                  properties: {
+                    name: { type: "string" },
+                    phone: { type: ["string", "null"] },
+                  },
+                },
+                items: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["description", "quantity", "unitPrice"],
+                    properties: {
+                      description: { type: "string" },
+                      quantity: { type: "number" },
+                      unitPrice: { type: "number" },
+                    },
+                  },
+                },
+                discount: { type: "number" },
+                notes: { type: ["string", "null"] },
+                terms: { type: ["string", "null"] },
+              },
+            },
+          },
+        },
       },
     },
     401: { $ref: "ErrorResponse#" },
