@@ -8,15 +8,10 @@ async function companyStatusMiddleware(fastify, opts) {
   fastify.decorate("companyStatus", {
     /**
      * Middleware para verificar se a empresa está ativa antes de permitir operações
-     * @param {Object} options - Opções do middleware
-     * @param {boolean} options.allowReadOnlyForOwner - Se true, permite operações GET para proprietários mesmo com empresa inativa
-     * @param {string[]} options.allowedMethods - Métodos HTTP permitidos mesmo com empresa inativa (ex: ['GET'])
+     * Bloqueia completamente se a empresa estiver inativa
      * @returns {Function} Função middleware do Fastify
      */
-    checkActiveCompany: (options = {}) => {
-      const { allowReadOnlyForOwner = true, allowedMethods = ["GET"] } =
-        options;
-
+    checkActiveCompany: () => {
       return async (request, reply) => {
         // Verifica se o usuário está autenticado
         if (!request.user || !request.user.userId) {
@@ -52,31 +47,9 @@ async function companyStatusMiddleware(fastify, opts) {
 
           // Verifica se a empresa está inativa
           if (company.status === "inactive") {
-            const isOwner = company.owner_id === request.user.userId;
-            const method = request.method.toLowerCase().toUpperCase();
-            const isAllowedMethod = allowedMethods.includes(method);
-
-            // Se for proprietário e operação permitida
-            if (isOwner && allowReadOnlyForOwner && isAllowedMethod) {
-              // Adiciona um cabeçalho de aviso
-              reply.header(
-                "X-Company-Status-Warning",
-                "Esta empresa está inativa. Apenas operações de leitura são permitidas."
-              );
-              return; // Permite continuar
-            }
-
-            // Bloqueia a operação
-            let errorMessage;
-            if (isOwner) {
-              errorMessage =
-                `A empresa "${company.name}" está inativa. ` +
-                "Reative sua empresa para continuar cadastrando clientes e gerando orçamentos.";
-            } else {
-              errorMessage = `Acesso negado. A empresa "${company.name}" está inativa.`;
-            }
-
-            const error = new Error(errorMessage);
+            const error = new Error(
+              `A empresa "${company.name}" está inativa. Reative sua empresa para continuar cadastrando clientes e gerando orçamentos.`
+            );
             error.statusCode = 403;
             error.code = "CompanyInactive";
             error.companyId = companyId;
@@ -116,24 +89,18 @@ async function companyStatusMiddleware(fastify, opts) {
 
     /**
      * Middleware específico para operações de criação (POST, PUT, PATCH)
-     * Bloqueia completamente se a empresa estiver inativa
+     * Mantido por compatibilidade; atualmente comporta-se igual a checkActiveCompany
      */
     requireActiveCompanyForWrites: () => {
-      return fastify.companyStatus.checkActiveCompany({
-        allowReadOnlyForOwner: false,
-        allowedMethods: [],
-      });
+      return fastify.companyStatus.checkActiveCompany();
     },
 
     /**
      * Middleware para operações de leitura e escrita
-     * Permite leitura para proprietários mesmo com empresa inativa
+     * Bloqueia operações em empresas inativas
      */
     checkCompanyForReadsAndWrites: () => {
-      return fastify.companyStatus.checkActiveCompany({
-        allowReadOnlyForOwner: true,
-        allowedMethods: ["GET"],
-      });
+      return fastify.companyStatus.checkActiveCompany();
     },
   });
 

@@ -43,30 +43,10 @@ async function companyStatusHook(fastify, opts) {
 
       // Verifica se a empresa está inativa
       if (company.status === "inactive") {
-        // Verifica se o usuário é o proprietário da empresa
-        const isOwner = company.owner_id === request.user.userId;
-
-        // Se for proprietário, permite visualização mas bloqueia operações de criação/edição
-        if (isOwner) {
-          const method = request.method.toLowerCase();
-          const isReadOnlyOperation = method === "get";
-
-          if (!isReadOnlyOperation) {
-            const error = new Error(
-              "Não é possível realizar esta operação. A empresa está inativa. " +
-                "Reative sua empresa para continuar cadastrando clientes e gerando orçamentos."
-            );
-            error.statusCode = 403;
-            error.code = "CompanyInactive";
-            throw error;
-          }
-        } else {
-          // Se não for proprietário, bloqueia completamente o acesso
-          const error = new Error("Acesso negado. Esta empresa está inativa.");
-          error.statusCode = 403;
-          error.code = "CompanyInactive";
-          throw error;
-        }
+        const error = new Error("Acesso negado. Esta empresa está inativa.");
+        error.statusCode = 403;
+        error.code = "CompanyInactive";
+        throw error;
       }
     } catch (error) {
       // Se já tem statusCode, é um erro que queremos propagar

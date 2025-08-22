@@ -245,7 +245,6 @@ class CompanyService {
       page = 1,
       pageSize = 10,
       name,
-      status,
       owner_id,
       document_number,
     } = queryParams;
@@ -269,13 +268,12 @@ class CompanyService {
     }
 
     if (name) {
-      query = query.where("name", "like", `%${name}%`);
-      countQuery = countQuery.where("name", "like", `%${name}%`);
+      query = query.where("name", "like", `%${name}%");
+      countQuery = countQuery.where("name", "like", `%${name}%");
     }
-    if (status) {
-      query = query.where("status", status);
-      countQuery = countQuery.where("status", status);
-    }
+    // Sempre listar apenas empresas ativas
+    query = query.where("status", "active");
+    countQuery = countQuery.where("status", "active");
     if (document_number) {
       query = query.where("document_number", document_number);
       countQuery = countQuery.where("document_number", document_number);
@@ -326,6 +324,13 @@ class CompanyService {
         const error = new Error("Acesso proibido a esta empresa.");
         error.statusCode = 403;
         error.code = "Forbidden";
+        throw error;
+      }
+
+      if (company.status === "inactive") {
+        const error = new Error("Acesso negado. Esta empresa está inativa.");
+        error.statusCode = 403;
+        error.code = "CompanyInactive";
         throw error;
       }
 
