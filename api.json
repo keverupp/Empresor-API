@@ -2269,14 +2269,14 @@
             }
           }
         },
-        "parameters": [
-          {
-            "schema": { "type": "integer" },
-            "in": "path",
-            "name": "companyId",
-            "required": true
-          }
-        ],
+          "parameters": [
+            {
+              "schema": { "type": "string" },
+              "in": "path",
+              "name": "companyId",
+              "required": true
+            }
+          ],
         "security": [{ "bearerAuth": [] }],
         "responses": {
           "201": {
@@ -2317,14 +2317,14 @@
         "summary": "Listar Compartilhamentos",
         "tags": ["Empresas - Compartilhamento"],
         "description": "Lista os compartilhamentos de uma empresa.",
-        "parameters": [
-          {
-            "schema": { "type": "integer" },
-            "in": "path",
-            "name": "companyId",
-            "required": true
-          }
-        ],
+          "parameters": [
+            {
+              "schema": { "type": "string" },
+              "in": "path",
+              "name": "companyId",
+              "required": true
+            }
+          ],
         "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": {
@@ -2362,20 +2362,20 @@
         "summary": "Remover Compartilhamento",
         "tags": ["Empresas - Compartilhamento"],
         "description": "Remove o compartilhamento de uma empresa com um usuário.",
-        "parameters": [
-          {
-            "schema": { "type": "integer" },
-            "in": "path",
-            "name": "companyId",
-            "required": true
-          },
-          {
-            "schema": { "type": "integer" },
-            "in": "path",
-            "name": "userId",
-            "required": true
-          }
-        ],
+          "parameters": [
+            {
+              "schema": { "type": "string" },
+              "in": "path",
+              "name": "companyId",
+              "required": true
+            },
+            {
+              "schema": { "type": "integer" },
+              "in": "path",
+              "name": "userId",
+              "required": true
+            }
+          ],
         "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": {
