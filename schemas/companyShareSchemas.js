@@ -50,7 +50,7 @@ const createShareSchema = {
   params: {
     // <--- ADICIONADO AQUI
     type: "object",
-    properties: { companyId: { type: "integer" } },
+    properties: { companyId: { type: "string" } },
     required: ["companyId"],
   },
   body: { $ref: "CompanySharePayload#" },
@@ -71,7 +71,7 @@ const listSharesSchema = {
   params: {
     // <--- ADICIONADO AQUI
     type: "object",
-    properties: { companyId: { type: "integer" } },
+    properties: { companyId: { type: "string" } },
     required: ["companyId"],
   },
   response: {
@@ -91,7 +91,7 @@ const deleteShareSchema = {
     // <--- ADICIONADO AQUI
     type: "object",
     properties: {
-      companyId: { type: "integer" },
+      companyId: { type: "string" },
       userId: { type: "integer" },
     },
     required: ["companyId", "userId"],
