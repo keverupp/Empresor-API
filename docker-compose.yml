@@ -5,46 +5,69 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # args:
+      #   NODE_VERSION: 20-alpine   # opcional, se seu Dockerfile suportar
     container_name: fastify-api-v2
     restart: unless-stopped
-    ports:
-      - "3001:3001"
+
+    # 👇 Variáveis em formato key:value (mais limpo)
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3001}
       HOST: ${HOST:-0.0.0.0}
+
       DATABASE_URL: ${DATABASE_URL}
+
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+
       EMAIL_HOST: ${EMAIL_HOST}
       EMAIL_PORT: ${EMAIL_PORT:-587}
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASS: ${EMAIL_PASS}
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_SECURE: ${EMAIL_SECURE:-false}
+
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_BACKEND_REDIRECT_URI: ${GOOGLE_BACKEND_REDIRECT_URI}
+
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       CORS_CREDENTIALS: ${CORS_CREDENTIALS:-true}
+
       SWAGGER_HOST: ${SWAGGER_HOST:-localhost:3001}
       SWAGGER_SCHEMES: ${SWAGGER_SCHEMES:-http}
+
       APP_NAME: ${APP_NAME:-Fastify API}
       APP_VERSION: ${APP_VERSION:-1.0.0}
       APP_DESCRIPTION: ${APP_DESCRIPTION:-Fastify API with JWT, PostgreSQL and more}
+
       MAX_FILE_SIZE: ${MAX_FILE_SIZE:-10485760}
       UPLOAD_LIMIT: ${UPLOAD_LIMIT:-5}
       RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
       RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-900000}
+
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
+
+    # ❌ Sem 'ports:' — o proxy reverso acessa via rede compartilhada
     networks:
       - fastify-network
+      # - proxy_network   # ← descomente se usar a rede do seu proxy reverso
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
     deploy:
       resources:
         limits:
@@ -53,12 +76,9 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 networks:
   fastify-network:
     driver: bridge
+  # proxy_network:
+  #   external: true   # use a rede externa do seu proxy (ex.: NPM/Traefik)
