@@ -1,47 +1,37 @@
-# Use Node.js LTS version
+# Use Node.js LTS (18) com Alpine
 FROM node:18-alpine
 
-# Set working directory
+# Diretório de trabalho
 WORKDIR /app
 
-# Install dependencies for Puppeteer
+# Dependências do Puppeteer/Chromium
 RUN apk add --no-cache \
     chromium \
     nss \
     freetype \
-    freetype-dev \
     harfbuzz \
     ca-certificates \
     ttf-freefont
 
-# Tell Puppeteer to skip installing Chromium. We'll be using the installed package.
+# Puppeteer usará o Chromium do sistema
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+    NODE_ENV=production
 
-# Copy package files
+# Copia manifestos e instala dependências de produção
 COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy application code
+# Copia o código da aplicação
 COPY . .
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S fastify -u 1001
-
-# Change ownership of the app directory
-RUN chown -R fastify:nodejs /app
+# Usuário não-root por segurança
+RUN addgroup -g 1001 -S nodejs && adduser -S fastify -u 1001 && \
+    chown -R fastify:nodejs /app
 USER fastify
 
-# Expose port
+# Porta interna (não será publicada no host; o proxy acessa via rede)
 EXPOSE 3001
 
-# Set entrypoint and command
-ENTRYPOINT ["docker-entrypoint.sh"]
+# Inicia a API (ajuste se seu entrypoint for outro arquivo)
 CMD ["node", "app.js"]
