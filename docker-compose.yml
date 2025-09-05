@@ -5,12 +5,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      # args:
-      #   NODE_VERSION: 20-alpine   # opcional, se seu Dockerfile suportar
     container_name: fastify-api-v2
     restart: unless-stopped
 
-    # 👇 Variáveis em formato key:value (mais limpo)
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3001}
@@ -57,10 +54,9 @@ services:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
 
-    # ❌ Sem 'ports:' — o proxy reverso acessa via rede compartilhada
     networks:
       - fastify-network
-      # - proxy_network   # ← descomente se usar a rede do seu proxy reverso
+      - proxy_network   # rede compartilhada com o NPM
 
     logging:
       driver: "json-file"
@@ -80,5 +76,5 @@ services:
 networks:
   fastify-network:
     driver: bridge
-  # proxy_network:
-  #   external: true   # use a rede externa do seu proxy (ex.: NPM/Traefik)
+  proxy_network:
+    external: true
