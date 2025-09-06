@@ -155,10 +155,22 @@ class CompanyService {
     };
 
     try {
-      const [createdCompany] = await fastify
-        .knex("companies")
-        .insert(companyToInsert)
-        .returning("*");
+      const createdCompany = await fastify.knex.transaction(async (trx) => {
+        const [company] = await trx("companies")
+          .insert(companyToInsert)
+          .returning("*");
+
+        // Cria cliente "CONSUMIDOR" padrão para a nova empresa
+        await trx("clients").insert({
+          company_id: company.id,
+          name: "CONSUMIDOR",
+          document_number: "00000000000",
+          email: null,
+          phone_number: null,
+        });
+
+        return company;
+      });
 
       if (createdCompany.status === "pending_validation") {
         await this._sendVerificationEmail(fastify, createdCompany);
