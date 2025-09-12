@@ -184,11 +184,11 @@ class DashboardService {
 
       // Aplicar filtros da query
       if (company_id) {
-        query = query.where("q.company_id", company_id);
+        query = query.where("c.public_id", company_id);
       }
 
       if (client_id) {
-        query = query.where("q.client_id", client_id);
+        query = query.where("cl.public_id", client_id);
       }
 
       if (status) {
