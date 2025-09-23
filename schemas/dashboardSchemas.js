@@ -6,8 +6,8 @@ const DashboardFilters = {
   $id: "DashboardFilters",
   type: "object",
   properties: {
-    company_id: { type: "integer" },
-    client_id: { type: "integer" },
+    company_id: { type: "string" },
+    client_id: { type: "string" },
     status: {
       type: "string",
       enum: [
