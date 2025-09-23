@@ -7,6 +7,8 @@ const ClientResponse = {
   properties: {
     id: { type: "string" },
     company_id: { type: "string" },
+    created_by_user_id: { type: ["string", "null"] },
+    created_by_user_name: { type: ["string", "null"] },
     name: { type: "string" },
     email: { type: ["string"], format: "email" },
     phone_number: { type: ["string"] },

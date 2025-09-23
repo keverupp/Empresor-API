@@ -47,6 +47,10 @@ const S_QUOTE_RESPONSE = {
       type: ["string", "null"],
       description: "ID do usuário que criou",
     },
+    created_by_user_name: {
+      type: ["string", "null"],
+      description: "Nome do usuário que criou",
+    },
     quote_number: {
       type: "string",
       description: "Número do orçamento",

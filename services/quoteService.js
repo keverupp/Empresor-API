@@ -27,6 +27,7 @@ function mapQuotePublicId(quote) {
     company_public_id,
     client_public_id,
     created_by_user_public_id,
+    created_by_user_name,
     company_id: _company_internal_id,
     client_id: _client_internal_id,
     created_by_user_id: _user_internal_id,
@@ -37,6 +38,9 @@ function mapQuotePublicId(quote) {
     total_amount_cents,
     ...rest
   } = quote;
+
+  const resolvedCreatorId =
+    created_by_user_public_id ?? _user_internal_id ?? null;
 
   const mappedItems = Array.isArray(items)
     ? items.map((it) => {
@@ -68,7 +72,9 @@ function mapQuotePublicId(quote) {
     id: public_id,
     company_id: String(company_public_id || _company_internal_id),
     client_id: String(client_public_id || _client_internal_id),
-    created_by_user_id: String(created_by_user_public_id || _user_internal_id),
+    created_by_user_id:
+      resolvedCreatorId !== null ? String(resolvedCreatorId) : null,
+    created_by_user_name: created_by_user_name ?? null,
     subtotal_cents:
       subtotal_cents !== undefined ? toInt(subtotal_cents, 0) : undefined,
     discount_value_cents:
@@ -773,6 +779,7 @@ class QuoteService {
         "comp.public_id as company_public_id",
         "c.public_id as client_public_id",
         "u.public_id as created_by_user_public_id",
+        "u.name as created_by_user_name",
         knex.raw(`
           json_build_object(
             'id', c.public_id,
@@ -957,6 +964,7 @@ class QuoteService {
         "comp.public_id as company_public_id",
         "c.public_id as client_public_id",
         "u.public_id as created_by_user_public_id",
+        "u.name as created_by_user_name",
         knex.raw(`
           json_build_object(
             'id', c.public_id,
@@ -1213,6 +1221,7 @@ class QuoteService {
         "comp.public_id as company_public_id",
         "c.public_id as client_public_id",
         "u.public_id as created_by_user_public_id",
+        "u.name as created_by_user_name",
         "c.name as client_name",
         "c.email as client_email"
       )

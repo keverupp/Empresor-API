@@ -7,12 +7,21 @@ function mapClientPublicId(client) {
     public_id,
     company_public_id,
     company_id: _company_internal_id,
+    created_by_user_public_id,
+    created_by_user_name,
+    created_by_user_id: _created_by_user_internal_id,
     ...rest
   } = client;
+
+  const resolvedCreatorId =
+    created_by_user_public_id ?? _created_by_user_internal_id ?? null;
 
   return {
     id: public_id,
     company_id: String(company_public_id || _company_internal_id),
+    created_by_user_id:
+      resolvedCreatorId !== null ? String(resolvedCreatorId) : null,
+    created_by_user_name: created_by_user_name ?? null,
     ...rest,
   };
 }
@@ -34,7 +43,7 @@ class ClientService {
     return row ? row.id : null;
   }
 
-  async createClient(fastify, companyId, clientData) {
+  async createClient(fastify, companyId, clientData, createdByUserId) {
     const { knex, log } = fastify;
     const { document_number } = clientData;
     const companyInternalId = await this._resolveCompanyId(knex, companyId);
@@ -65,6 +74,7 @@ class ClientService {
         .insert({
           ...clientData,
           company_id: companyInternalId,
+          created_by_user_id: createdByUserId || null,
         })
         .returning("*");
       log.info(`Cliente #${client.id} criado para a empresa #${companyId}`);
@@ -98,8 +108,14 @@ class ClientService {
     const clients = await fastify
       .knex("clients as cl")
       .join("companies as c", "cl.company_id", "c.id")
+      .leftJoin("users as u", "cl.created_by_user_id", "u.id")
       .where("cl.company_id", companyInternalId)
-      .select("cl.*", "c.public_id as company_public_id")
+      .select(
+        "cl.*",
+        "c.public_id as company_public_id",
+        "u.public_id as created_by_user_public_id",
+        "u.name as created_by_user_name"
+      )
       .orderBy("cl.name", "asc");
 
     return clients.map(mapClientPublicId);
@@ -117,8 +133,14 @@ class ClientService {
     const client = await fastify
       .knex("clients as cl")
       .join("companies as c", "cl.company_id", "c.id")
+      .leftJoin("users as u", "cl.created_by_user_id", "u.id")
       .where({ "cl.id": clientInternalId, "cl.company_id": companyInternalId })
-      .select("cl.*", "c.public_id as company_public_id")
+      .select(
+        "cl.*",
+        "c.public_id as company_public_id",
+        "u.public_id as created_by_user_public_id",
+        "u.name as created_by_user_name"
+      )
       .first();
 
     if (!client) {

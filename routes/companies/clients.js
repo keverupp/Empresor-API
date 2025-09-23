@@ -83,7 +83,8 @@ module.exports = async function (fastify, opts) {
       const newClient = await services.client.createClient(
         fastify,
         request.params.companyId,
-        request.body
+        request.body,
+        request.user.userId
       );
       reply.code(201).send(newClient);
     }
