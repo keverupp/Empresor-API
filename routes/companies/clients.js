@@ -16,7 +16,7 @@ module.exports = async function (fastify, opts) {
           // 1. Verifica se o usuário é proprietário da empresa
           const company = await fastify
             .knex("companies")
-            .select("owner_id")
+            .select("id", "owner_id")
             .where("public_id", companyId)
             .first();
 
