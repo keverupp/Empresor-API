@@ -130,6 +130,72 @@ class CompanyShareService {
       );
   }
 
+  async listCompaniesSharedWithUser(fastify, userId) {
+    const rows = await fastify
+      .knex("company_shares as cs")
+      .join("companies as c", "cs.company_id", "c.id")
+      .join("users as owner", "c.owner_id", "owner.id")
+      .join("users as shared_by", "cs.shared_by_user_id", "shared_by.id")
+      .where("cs.shared_with_user_id", userId)
+      .select(
+        "cs.id as share_id",
+        "cs.permissions",
+        "cs.status",
+        "cs.created_at as shared_at",
+        "c.id as company_internal_id",
+        "c.public_id as company_public_id",
+        "c.name as company_name",
+        "c.status as company_status",
+        "owner.id as owner_id",
+        "owner.public_id as owner_public_id",
+        "owner.name as owner_name",
+        "owner.email as owner_email",
+        "shared_by.id as shared_by_id",
+        "shared_by.public_id as shared_by_public_id",
+        "shared_by.name as shared_by_name",
+        "shared_by.email as shared_by_email"
+      )
+      .orderBy("cs.created_at", "desc");
+
+    const resolveId = (primary, fallback) => {
+      if (primary !== undefined && primary !== null && primary !== "") {
+        return String(primary);
+      }
+      if (fallback !== undefined && fallback !== null && fallback !== "") {
+        return String(fallback);
+      }
+      return null;
+    };
+
+    return rows.map((row) => {
+      const companyId = resolveId(
+        row.company_public_id,
+        row.company_internal_id
+      );
+      return {
+        share_id: row.share_id,
+        permissions: row.permissions || {},
+        status: row.status,
+        shared_at: row.shared_at,
+        company: {
+          id: companyId,
+          name: row.company_name,
+          status: row.company_status,
+          owner: {
+            id: resolveId(row.owner_public_id, row.owner_id),
+            name: row.owner_name || null,
+            email: row.owner_email || null,
+          },
+        },
+        shared_by: {
+          id: resolveId(row.shared_by_public_id, row.shared_by_id),
+          name: row.shared_by_name || null,
+          email: row.shared_by_email || null,
+        },
+      };
+    });
+  }
+
   async deleteShare(fastify, companyId, sharedUserId) {
     const companyInternalId = await this._resolveCompanyId(
       fastify.knex,
