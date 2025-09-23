@@ -123,6 +123,46 @@ const S_COMPANY_RESPONSE = {
   properties: companyProperties,
 };
 
+const S_COMPANY_SHARED_ACTOR = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    name: { type: ["string", "null"] },
+    email: { type: ["string", "null"], format: "email" },
+  },
+  required: ["id"],
+};
+
+const S_COMPANY_SHARED_WITH_USER = {
+  $id: "CompanySharedWithUser",
+  type: "object",
+  properties: {
+    share_id: { type: "integer" },
+    status: { type: "string" },
+    shared_at: { type: "string", format: "date-time" },
+    permissions: { $ref: "CompanySharePermissions#" },
+    company: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        name: { type: "string" },
+        status: { type: ["string", "null"] },
+        owner: S_COMPANY_SHARED_ACTOR,
+      },
+      required: ["id", "name", "owner"],
+    },
+    shared_by: S_COMPANY_SHARED_ACTOR,
+  },
+  required: [
+    "share_id",
+    "status",
+    "shared_at",
+    "permissions",
+    "company",
+    "shared_by",
+  ],
+};
+
 const S_COMPANY_VERIFY_PAYLOAD = {
   $id: "CompanyVerifyPayload",
   type: "object",
@@ -263,6 +303,18 @@ const getCompaniesSchema = {
         },
       },
     },
+    401: { $ref: "ErrorResponse#" },
+    500: { $ref: "ErrorResponse#" },
+  },
+};
+
+const getCompaniesSharedWithUserSchema = {
+  description: "Lista as empresas compartilhadas com o usuário autenticado.",
+  tags: ["Empresas"],
+  summary: "Listar Empresas Compartilhadas Comigo",
+  security: [{ bearerAuth: [] }],
+  response: {
+    200: { type: "array", items: { $ref: "CompanySharedWithUser#" } },
     401: { $ref: "ErrorResponse#" },
     500: { $ref: "ErrorResponse#" },
   },
@@ -410,9 +462,11 @@ module.exports = {
     S_COMPANY_UPDATE_PAYLOAD,
     S_COMPANY_LIST_QUERYSTRING,
     S_COMPANY_VERIFY_PAYLOAD,
+    S_COMPANY_SHARED_WITH_USER,
   ],
   createCompanySchema,
   getCompaniesSchema,
+  getCompaniesSharedWithUserSchema,
   getCompanyByIdSchema,
   updateCompanySchema,
   deleteCompanySchema,

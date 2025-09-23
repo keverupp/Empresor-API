@@ -5,6 +5,7 @@ const {
   createCompanySchema,
   getCompaniesSchema,
   getCompanyByIdSchema,
+  getCompaniesSharedWithUserSchema,
   updateCompanySchema,
   deleteCompanySchema,
   uploadCompanyLogoSchema,
@@ -14,6 +15,8 @@ const {
 
 module.exports = async function (fastify, opts) {
   const CompanyService = fastify.services && fastify.services.company;
+  const CompanyShareService =
+    fastify.services && fastify.services.companyShare;
   // Hook de autenticação
   const preHandler = fastify.authenticate ? [fastify.authenticate] : [];
   if (!fastify.authenticate) {
@@ -74,6 +77,37 @@ module.exports = async function (fastify, opts) {
         CompanyService.listCompanies.bind(CompanyService),
         request.user.userId,
         request.query
+      );
+      if (result) {
+        reply.send(result);
+      }
+    }
+  );
+
+  fastify.get(
+    "/shared",
+    { schema: getCompaniesSharedWithUserSchema, preHandler },
+    async (request, reply) => {
+      if (
+        !CompanyShareService ||
+        typeof CompanyShareService.listCompaniesSharedWithUser !== "function"
+      ) {
+        fastify.log.error(
+          "Serviço companyShare.listCompaniesSharedWithUser não está disponível."
+        );
+        return reply.code(500).send({
+          statusCode: 500,
+          error: "InternalServerError",
+          message: "Serviço de compartilhamento de empresas indisponível.",
+        });
+      }
+
+      const result = await handleServiceCall(
+        reply,
+        CompanyShareService.listCompaniesSharedWithUser.bind(
+          CompanyShareService
+        ),
+        request.user.userId
       );
       if (result) {
         reply.send(result);
