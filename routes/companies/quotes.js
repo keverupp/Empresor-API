@@ -132,6 +132,7 @@ module.exports = async function (fastify, opts) {
         fastify,
         request.params.companyId,
         request.params.quoteId,
+        request.user.userId,
         request.body
       );
       if (updatedQuote) reply.send(updatedQuote);
@@ -178,6 +179,7 @@ module.exports = async function (fastify, opts) {
         fastify,
         request.params.companyId,
         request.params.quoteId,
+        request.user.userId,
         request.params.itemId,
         request.body
       );
@@ -223,6 +225,7 @@ module.exports = async function (fastify, opts) {
         fastify,
         request.params.companyId,
         request.params.quoteId,
+        request.user.userId,
         request.params.itemId
       );
       if (updatedQuote) reply.send(updatedQuote);
@@ -315,7 +318,8 @@ module.exports = async function (fastify, opts) {
         fastify, // 1º: fastify instance
         request.params.companyId, // 2º: companyId
         request.params.quoteId, // 3º: quoteId
-        request.body // 4º: updateData
+        request.user.userId, // 4º: userId
+        request.body // 5º: updateData
       );
       if (updatedQuote) {
         reply.send(updatedQuote);
@@ -334,7 +338,8 @@ module.exports = async function (fastify, opts) {
         fastify, // 1º: fastify instance
         request.params.companyId, // 2º: companyId
         request.params.quoteId, // 3º: quoteId
-        request.body.status // 4º: status
+        request.user.userId, // 4º: userId
+        request.body.status // 5º: status
       );
       if (updatedQuote) {
         reply.send(updatedQuote);
@@ -352,7 +357,8 @@ module.exports = async function (fastify, opts) {
         services.quote.deleteQuote.bind(services.quote),
         fastify, // 1º: fastify instance
         request.params.companyId, // 2º: companyId
-        request.params.quoteId // 3º: quoteId
+        request.params.quoteId, // 3º: quoteId
+        request.user.userId // 4º: userId
       );
       if (result) {
         reply.send(result);
