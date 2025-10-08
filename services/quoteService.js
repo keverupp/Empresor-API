@@ -128,6 +128,51 @@ class QuoteService {
     return row ? row.id : null;
   }
 
+  async _ensureQuoteEditPermissions(knex, companyId, quoteId, userId) {
+    const company = await knex("companies")
+      .select("id", "owner_id")
+      .where("public_id", companyId)
+      .first();
+
+    if (!company) {
+      const error = new Error("Empresa não encontrada.");
+      error.statusCode = 404;
+      error.code = "COMPANY_NOT_FOUND";
+      throw error;
+    }
+
+    const quote = await knex("quotes")
+      .select("id", "created_by_user_id")
+      .where({ company_id: company.id })
+      .where("public_id", quoteId)
+      .first();
+
+    if (!quote) {
+      const error = new Error("Orçamento não encontrado.");
+      error.statusCode = 404;
+      error.code = "QUOTE_NOT_FOUND";
+      throw error;
+    }
+
+    const isOwner = company.owner_id === userId;
+
+    if (!isOwner && quote.created_by_user_id !== userId) {
+      const error = new Error(
+        "Você não tem permissão para editar este orçamento."
+      );
+      error.statusCode = 403;
+      error.code = "QUOTE_EDIT_FORBIDDEN";
+      throw error;
+    }
+
+    return {
+      companyInternalId: company.id,
+      quoteInternalId: quote.id,
+      isOwner,
+      quoteCreatorId: quote.created_by_user_id,
+    };
+  }
+
   /**
    * Calcula totais do orçamento
    * @private
@@ -338,10 +383,10 @@ class QuoteService {
   /**
    * Atualiza um orçamento específico (aceita items vazio)
    */
-  async updateQuote(fastify, companyId, quoteId, updateData) {
+  async updateQuote(fastify, companyId, quoteId, userId, updateData) {
     const { knex, log } = fastify;
-    const companyInternalId = await this._resolveCompanyId(knex, companyId);
-    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
+    const { companyInternalId, quoteInternalId } =
+      await this._ensureQuoteEditPermissions(knex, companyId, quoteId, userId);
 
     const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
     if (["accepted", "invoiced"].includes(existingQuote.status)) {
@@ -469,11 +514,10 @@ class QuoteService {
   /**
    * Adiciona 1 item no orçamento e recalcula totais
    */
-  async addQuoteItem(fastify, companyId, quoteId, payload) {
+  async addQuoteItem(fastify, companyId, quoteId, userId, payload) {
     const { knex, log } = fastify;
-
-    const companyInternalId = await this._resolveCompanyId(knex, companyId);
-    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
+    const { companyInternalId, quoteInternalId } =
+      await this._ensureQuoteEditPermissions(knex, companyId, quoteId, userId);
 
     const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
     if (["accepted", "invoiced"].includes(existingQuote.status)) {
@@ -571,11 +615,17 @@ class QuoteService {
   /**
    * Atualiza 1 item do orçamento e recalcula totais
    */
-  async updateQuoteItem(fastify, companyId, quoteId, itemId, payload) {
+  async updateQuoteItem(
+    fastify,
+    companyId,
+    quoteId,
+    userId,
+    itemId,
+    payload
+  ) {
     const { knex, log } = fastify;
-
-    const companyInternalId = await this._resolveCompanyId(knex, companyId);
-    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
+    const { companyInternalId, quoteInternalId } =
+      await this._ensureQuoteEditPermissions(knex, companyId, quoteId, userId);
 
     const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
     if (["accepted", "invoiced"].includes(existingQuote.status)) {
@@ -683,11 +733,10 @@ class QuoteService {
   /**
    * Remove 1 item do orçamento, reordena e recalcula totais
    */
-  async deleteQuoteItem(fastify, companyId, quoteId, itemId) {
+  async deleteQuoteItem(fastify, companyId, quoteId, userId, itemId) {
     const { knex, log } = fastify;
-
-    const companyInternalId = await this._resolveCompanyId(knex, companyId);
-    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
+    const { companyInternalId, quoteInternalId } =
+      await this._ensureQuoteEditPermissions(knex, companyId, quoteId, userId);
 
     const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
     if (["accepted", "invoiced"].includes(existingQuote.status)) {
@@ -1057,8 +1106,11 @@ class QuoteService {
   /**
    * Atualiza apenas o status de um orçamento
    */
-  async updateQuoteStatus(fastify, companyId, quoteId, newStatus) {
+  async updateQuoteStatus(fastify, companyId, quoteId, userId, newStatus) {
     const { knex, log } = fastify;
+
+    const { companyInternalId, quoteInternalId } =
+      await this._ensureQuoteEditPermissions(knex, companyId, quoteId, userId);
 
     const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
 
@@ -1074,9 +1126,6 @@ class QuoteService {
     if (newStatus === "rejected" && existingQuote.status !== "rejected") {
       updateData.rejected_at = knex.fn.now();
     }
-
-    const companyInternalId = await this._resolveCompanyId(knex, companyId);
-    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
 
     try {
       await knex("quotes")
@@ -1094,10 +1143,10 @@ class QuoteService {
   /**
    * Exclui um orçamento específico
    */
-  async deleteQuote(fastify, companyId, quoteId) {
+  async deleteQuote(fastify, companyId, quoteId, userId) {
     const { knex, log } = fastify;
-    const companyInternalId = await this._resolveCompanyId(knex, companyId);
-    const quoteInternalId = await this._resolveQuoteId(knex, quoteId);
+    const { companyInternalId, quoteInternalId } =
+      await this._ensureQuoteEditPermissions(knex, companyId, quoteId, userId);
 
     const existingQuote = await this.getQuoteById(fastify, companyId, quoteId);
     if (["accepted", "invoiced"].includes(existingQuote.status)) {
