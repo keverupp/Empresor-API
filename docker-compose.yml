@@ -56,7 +56,6 @@ services:
 
     networks:
       - fastify-network
-      - proxy_network   # rede compartilhada com o NPM
 
     logging:
       driver: "json-file"
@@ -73,8 +72,24 @@ services:
           cpus: '0.5'
           memory: 512M
 
+  postgres_db:
+    image: postgres:13
+    container_name: postgres_db_v2
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-empresor_user}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-sua_senha_segura}
+      POSTGRES_DB: ${DATABASE_NAME:-empresor_db}
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fastify-network
+
 networks:
   fastify-network:
     driver: bridge
-  proxy_network:
-    external: true
+
+volumes:
+  postgres_data:

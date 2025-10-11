@@ -14,6 +14,16 @@ const S_QUOTE_ITEM = {
       type: "string",
       description: "Descrição do produto/serviço",
     },
+    complement: {
+      type: ["string", "null"],
+      description: "Complemento da descrição",
+    },
+    images: {
+      type: "array",
+      items: { type: "string", format: "uri" },
+      default: [],
+      description: "URLs das imagens do item (recurso pago)",
+    },
     quantity: {
       type: "number",
       minimum: 0.01,
@@ -589,6 +599,11 @@ const QuoteItemAddPayload = {
       type: "string",
       minLength: 1,
       description: "Descrição do item",
+    },
+    images: {
+      type: "array",
+      items: { type: "string", format: "uri" },
+      description: "URLs das imagens do item (recurso pago)",
     },
     quantity: {
       type: "number",

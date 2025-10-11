@@ -1,5 +1,7 @@
 "use strict";
 
+const permissionService = require("./permissionService");
+
 /** ---------------- Helpers numéricos e arredondamento ---------------- */
 const toNumber = (v, def = 0) => {
   const n = Number(v);
@@ -64,6 +66,8 @@ function mapQuotePublicId(quote) {
             total_price_cents !== undefined
               ? toInt(total_price_cents, 0)
               : undefined,
+          complement: it.complement,
+          images: typeof it.images === 'string' ? JSON.parse(it.images) : it.images,
         };
       })
     : undefined;
@@ -305,11 +309,24 @@ class QuoteService {
           if (unitPrice == null) unitPrice = product.unit_price_cents;
         }
 
+        if (item.images && item.images.length > 0) {
+          const userPlan = await permissionService.getUserPlan(fastify, userId);
+          if (!permissionService.checkPermission(userPlan, "allow_images")) {
+            const err = new Error(
+              "Seu plano não permite adicionar imagens aos itens."
+            );
+            err.statusCode = 403;
+            err.code = "IMAGES_NOT_ALLOWED";
+            throw err;
+          }
+        }
         return {
           product_id: productInternalId,
           description,
           quantity: toNumber(item.quantity, 0),
           unit_price_cents: toInt(unitPrice, 0),
+          complement: item.complement,
+          images: item.images,
         };
       })
     );
@@ -356,6 +373,8 @@ class QuoteService {
             item.unit_price_cents
           ),
           item_order: index + 1,
+          complement: item.complement,
+          images: JSON.stringify(item.images || []),
         }));
         await transaction("quote_items").insert(quoteItems);
       }
