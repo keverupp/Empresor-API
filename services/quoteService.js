@@ -548,6 +548,19 @@ class QuoteService {
       throw e;
     }
 
+    // Verifica a permissão para adicionar imagens
+    if (payload.images && payload.images.length > 0) {
+      const userPlan = await permissionService.getUserPlan(fastify, userId);
+      if (!permissionService.checkPermission(userPlan, "allow_images")) {
+        const err = new Error(
+          "O seu plano atual não permite adicionar imagens aos itens do orçamento."
+        );
+        err.statusCode = 403;
+        err.code = "FEATURE_NOT_ALLOWED_IMAGES";
+        throw err;
+      }
+    }
+
     let productInternalId = null;
     let description = payload.description;
     let unitPriceCents = payload.unit_price_cents;
@@ -593,6 +606,8 @@ class QuoteService {
         unit_price_cents: unit,
         total_price_cents: lineTotal,
         item_order: nextOrder,
+        complement: payload.complement,
+        images: JSON.stringify(payload.images || []),
       });
 
       const itemsDb = await transaction("quote_items")
@@ -711,6 +726,8 @@ class QuoteService {
           quantity: qty,
           unit_price_cents: unit,
           total_price_cents: lineTotal,
+          complement: payload.complement,
+          images: JSON.stringify(payload.images || []),
         });
 
       const itemsDb = await transaction("quote_items")
