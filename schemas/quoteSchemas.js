@@ -600,6 +600,10 @@ const QuoteItemAddPayload = {
       minLength: 1,
       description: "Descrição do item",
     },
+    complement: {
+      type: ["string", "null"],
+      description: "Complemento da descrição",
+    },
     images: {
       type: "array",
       items: { type: "string", format: "uri" },

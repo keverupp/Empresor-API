@@ -1,7 +1,7 @@
 "use strict";
 
-const { createPresignedUrlSchema } = require("../../../schemas/uploadSchemas");
-const uploadService = require("../../../services/uploadService");
+const { createPresignedUrlSchema } = require("../../schemas/uploadSchemas");
+const uploadService = require("../../services/uploadService");
 
 module.exports = async function (fastify) {
   fastify.post(
