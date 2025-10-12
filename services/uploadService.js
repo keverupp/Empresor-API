@@ -33,8 +33,11 @@ class UploadService {
       log.info(`Presigned URL gerada para o arquivo: ${uniqueFileName}`);
       return { uploadUrl, fileUrl };
     } catch (error) {
-      log.error("Erro ao gerar presigned URL:", error);
-      throw new Error("Não foi possível gerar a URL de upload.");
+      log.error({ msg: "Erro detalhado ao gerar presigned URL", error });
+      const errorMessage = `Não foi possível gerar a URL de upload. Causa: ${error.message}`;
+      const serviceError = new Error(errorMessage);
+      serviceError.originalError = error;
+      throw serviceError;
     }
   }
 }
