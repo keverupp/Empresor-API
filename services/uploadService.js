@@ -19,7 +19,9 @@ class UploadService {
     const { log } = fastify;
 
     try {
-      const uniqueFileName = `${crypto.randomBytes(16).toString("hex")}-${fileName}`;
+      // Sanitize the filename to make it URL-friendly
+      const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.\-]/g, '-');
+      const uniqueFileName = `${crypto.randomBytes(16).toString("hex")}-${sanitizedFileName}`;
 
       const command = new PutObjectCommand({
         Bucket: process.env.MINIO_BUCKET_NAME,
