@@ -687,7 +687,7 @@ class QuoteService {
       payload.unit_price_cents ?? currentItem.unit_price_cents;
 
     if (payload.product_id !== undefined) {
-      if (payload.product_id === null) {
+      if (payload.product_id === null || payload.product_id === "null") {
         productInternalId = null;
       } else {
         const pid = await this._resolveProductId(knex, payload.product_id);
