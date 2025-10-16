@@ -1,5 +1,7 @@
 "use strict";
 
+const permissionService = require("./permissionService");
+
 /** ---------------- Helpers numéricos e arredondamento ---------------- */
 const toNumber = (v, def = 0) => {
   const n = Number(v);
@@ -64,6 +66,8 @@ function mapQuotePublicId(quote) {
             total_price_cents !== undefined
               ? toInt(total_price_cents, 0)
               : undefined,
+          complement: it.complement,
+          images: typeof it.images === 'string' ? JSON.parse(it.images) : it.images,
         };
       })
     : undefined;
@@ -305,11 +309,24 @@ class QuoteService {
           if (unitPrice == null) unitPrice = product.unit_price_cents;
         }
 
+        if (item.images && item.images.length > 0) {
+          const userPlan = await permissionService.getUserPlan(fastify, userId);
+          if (!permissionService.checkPermission(userPlan, "allow_images")) {
+            const err = new Error(
+              "Seu plano não permite adicionar imagens aos itens."
+            );
+            err.statusCode = 403;
+            err.code = "IMAGES_NOT_ALLOWED";
+            throw err;
+          }
+        }
         return {
           product_id: productInternalId,
           description,
           quantity: toNumber(item.quantity, 0),
           unit_price_cents: toInt(unitPrice, 0),
+          complement: item.complement,
+          images: item.images,
         };
       })
     );
@@ -356,6 +373,8 @@ class QuoteService {
             item.unit_price_cents
           ),
           item_order: index + 1,
+          complement: item.complement,
+          images: JSON.stringify(item.images || []),
         }));
         await transaction("quote_items").insert(quoteItems);
       }
@@ -529,6 +548,19 @@ class QuoteService {
       throw e;
     }
 
+    // Verifica a permissão para adicionar imagens
+    if (payload.images && payload.images.length > 0) {
+      const userPlan = await permissionService.getUserPlan(fastify, userId);
+      if (!permissionService.checkPermission(userPlan, "allow_images")) {
+        const err = new Error(
+          "O seu plano atual não permite adicionar imagens aos itens do orçamento."
+        );
+        err.statusCode = 403;
+        err.code = "FEATURE_NOT_ALLOWED_IMAGES";
+        throw err;
+      }
+    }
+
     let productInternalId = null;
     let description = payload.description;
     let unitPriceCents = payload.unit_price_cents;
@@ -574,6 +606,8 @@ class QuoteService {
         unit_price_cents: unit,
         total_price_cents: lineTotal,
         item_order: nextOrder,
+        complement: payload.complement,
+        images: JSON.stringify(payload.images || []),
       });
 
       const itemsDb = await transaction("quote_items")
@@ -653,7 +687,7 @@ class QuoteService {
       payload.unit_price_cents ?? currentItem.unit_price_cents;
 
     if (payload.product_id !== undefined) {
-      if (payload.product_id === null) {
+      if (payload.product_id === null || payload.product_id === "null") {
         productInternalId = null;
       } else {
         const pid = await this._resolveProductId(knex, payload.product_id);
@@ -692,6 +726,8 @@ class QuoteService {
           quantity: qty,
           unit_price_cents: unit,
           total_price_cents: lineTotal,
+          complement: payload.complement,
+          images: JSON.stringify(payload.images || []),
         });
 
       const itemsDb = await transaction("quote_items")
