@@ -480,6 +480,12 @@ const getQuotePdfDataSchema = {
                       description: { type: "string" },
                       quantity: { type: "number" },
                       unitPrice: { type: "number" },
+                      complement: { type: ["string", "null"] },
+                      images: {
+                        type: "array",
+                        items: { type: "string", format: "uri" },
+                        default: [],
+                      },
                     },
                   },
                 },
