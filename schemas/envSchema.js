@@ -67,6 +67,14 @@ const envSchema = {
     CLOUDINARY_CLOUD_NAME: { type: "string" },
     CLOUDINARY_API_KEY: { type: "string" },
     CLOUDINARY_API_SECRET: { type: "string" },
+
+    // Configurações do MinIO/S3 compatível
+    MINIO_ENDPOINT: { type: "string" },
+    MINIO_BUCKET_NAME: { type: "string" },
+    MINIO_BUCKET: { type: "string" },
+    MINIO_ACCESS_KEY: { type: "string" },
+    MINIO_SECRET_KEY: { type: "string" },
+    MINIO_REGION: { type: "string", default: "us-east-1" },
   },
 };
 
