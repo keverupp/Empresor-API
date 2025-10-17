@@ -954,7 +954,13 @@ class QuoteService {
 
     const items = await knex("quote_items")
       .where({ quote_id: quoteInternalId })
-      .select("description", "quantity", "unit_price_cents")
+      .select(
+        "description",
+        "quantity",
+        "unit_price_cents",
+        "complement",
+        "images"
+      )
       .orderBy("item_order", "asc");
 
     const addressParts = [
@@ -966,11 +972,25 @@ class QuoteService {
     ].filter(Boolean);
     const companyAddress = addressParts.join(" - ");
 
-    const formattedItems = items.map((item) => ({
-      description: item.description,
-      quantity: toNumber(item.quantity, 0),
-      unitPrice: toInt(item.unit_price_cents, 0) / 100,
-    }));
+    const formattedItems = items.map((item) => {
+      let parsedImages = item.images;
+
+      if (typeof parsedImages === "string") {
+        try {
+          parsedImages = JSON.parse(parsedImages);
+        } catch (error) {
+          parsedImages = [];
+        }
+      }
+
+      return {
+        description: item.description,
+        quantity: toNumber(item.quantity, 0),
+        unitPrice: toInt(item.unit_price_cents, 0) / 100,
+        complement: item.complement || null,
+        images: Array.isArray(parsedImages) ? parsedImages : [],
+      };
+    });
 
     const discount = quote.discount_value_cents
       ? toInt(quote.discount_value_cents, 0) / 100
