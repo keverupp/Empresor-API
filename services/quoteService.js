@@ -13,6 +13,25 @@ const toInt = (v, def = 0) => {
   return Number.isFinite(n) ? n : def;
 };
 
+const parseImagesArray = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null) return [];
+  if (Array.isArray(value)) {
+    return value.filter((url) => typeof url === "string");
+  }
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed.filter((url) => typeof url === "string")
+        : [];
+    } catch (error) {
+      return [];
+    }
+  }
+  return [];
+};
+
 // total da linha em centavos (quantity * unit_price_cents), com arredondamento consistente
 function calcLineTotalCents(quantity, unit_price_cents) {
   const qty = toNumber(quantity, 0);
@@ -54,6 +73,7 @@ function mapQuotePublicId(quote) {
           quantity,
           ...itemRest
         } = it;
+        const parsedImages = parseImagesArray(it.images);
         return {
           ...itemRest,
           product_id: String(product_public_id || _product_internal_id),
@@ -67,7 +87,8 @@ function mapQuotePublicId(quote) {
               ? toInt(total_price_cents, 0)
               : undefined,
           complement: it.complement,
-          images: typeof it.images === 'string' ? JSON.parse(it.images) : it.images,
+          images:
+            parsedImages === undefined ? undefined : parsedImages,
         };
       })
     : undefined;
@@ -716,18 +737,33 @@ class QuoteService {
         : toInt(unitPriceCents, 0);
     const lineTotal = calcLineTotalCents(qty, unit);
 
+    let imagesToPersist;
+    if (payload.images !== undefined) {
+      const requestedImages = parseImagesArray(payload.images) || [];
+      if (requestedImages.length > 0) {
+        const userPlan = await permissionService.getUserPlan(fastify, userId);
+        if (!permissionService.checkPermission(userPlan, "allow_images")) {
+          const err = new Error(
+            "O seu plano atual não permite adicionar imagens aos itens do orçamento."
+          );
+          err.statusCode = 403;
+          err.code = "FEATURE_NOT_ALLOWED_IMAGES";
+          throw err;
+        }
+      }
+      imagesToPersist = requestedImages;
+    } else {
+      const currentImages = parseImagesArray(currentItem.images);
+      imagesToPersist = currentImages === undefined ? [] : currentImages;
+    }
+
+    const complement =
+      payload.complement === undefined
+        ? currentItem.complement
+        : payload.complement;
+
     const transaction = await knex.transaction();
     try {
-      const imagesToStore =
-        payload.images === undefined
-          ? currentItem.images
-          : Array.isArray(payload.images)
-          ? JSON.stringify(payload.images)
-          : payload.images === null
-          ? JSON.stringify([])
-          : typeof payload.images === "string"
-          ? payload.images
-          : JSON.stringify([]);
 
       await transaction("quote_items")
         .where({ id: itemId, quote_id: quoteInternalId })
@@ -737,8 +773,8 @@ class QuoteService {
           quantity: qty,
           unit_price_cents: unit,
           total_price_cents: lineTotal,
-          complement: payload.complement,
-          images: imagesToStore,
+          complement,
+          images: JSON.stringify(imagesToPersist ?? []),
         });
 
       const itemsDb = await transaction("quote_items")

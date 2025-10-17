@@ -611,7 +611,7 @@ const QuoteItemAddPayload = {
       description: "Complemento da descrição",
     },
     images: {
-      type: "array",
+      type: ["array", "null"],
       items: { type: "string", format: "uri" },
       description: "URLs das imagens do item (recurso pago)",
     },
@@ -644,6 +644,15 @@ const QuoteItemUpdatePayload = {
       type: "string",
       minLength: 1,
       description: "Descrição do item",
+    },
+    complement: {
+      type: ["string", "null"],
+      description: "Complemento da descrição",
+    },
+    images: {
+      type: ["array", "null"],
+      items: { type: "string", format: "uri" },
+      description: "URLs das imagens do item (recurso pago)",
     },
     quantity: { type: "number", minimum: 0.01, description: "Quantidade" },
     unit_price_cents: {
