@@ -718,6 +718,17 @@ class QuoteService {
 
     const transaction = await knex.transaction();
     try {
+      const imagesToStore =
+        payload.images === undefined
+          ? currentItem.images
+          : Array.isArray(payload.images)
+          ? JSON.stringify(payload.images)
+          : payload.images === null
+          ? JSON.stringify([])
+          : typeof payload.images === "string"
+          ? payload.images
+          : JSON.stringify([]);
+
       await transaction("quote_items")
         .where({ id: itemId, quote_id: quoteInternalId })
         .update({
@@ -727,7 +738,7 @@ class QuoteService {
           unit_price_cents: unit,
           total_price_cents: lineTotal,
           complement: payload.complement,
-          images: JSON.stringify(payload.images || []),
+          images: imagesToStore,
         });
 
       const itemsDb = await transaction("quote_items")
