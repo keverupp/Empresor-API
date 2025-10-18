@@ -24,11 +24,9 @@ exports.seed = async function(knex) {
   }).returning('*');
 
   // Cria o usuário "master"
-  const hashedPassword = await bcrypt.hash('master_password', 10);
   await knex('users').insert({
     name: 'Master User',
     email: process.env.MASTER_USER_EMAIL || 'master@system.com',
-    password: hashedPassword,
     plan_id: plan.id,
   });
 };
