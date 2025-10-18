@@ -1,6 +1,6 @@
 // seeds/00_master_user.js
 require('dotenv').config();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 exports.seed = async function(knex) {
   // Deleta dados existentes para evitar duplicatas
