@@ -1055,7 +1055,7 @@ class QuoteService {
         discountInputValue = 0;
       }
     } else if (quote.discount_type === "fixed_amount") {
-      discountInputValue = toInt(quote.discount_value_cents, 0);
+      discountInputValue = toInt(quote.discount_value_cents, 0) / 100;
     } else {
       discountInputValue = 0;
     }
