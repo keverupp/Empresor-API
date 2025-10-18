@@ -490,6 +490,11 @@ const getQuotePdfDataSchema = {
                   },
                 },
                 discount: { type: "number" },
+                discount_type: {
+                  type: ["string", "null"],
+                  enum: ["percentage", "fixed_amount", null],
+                },
+                discount_value: { type: ["number", "null"] },
                 notes: { type: ["string", "null"] },
                 terms: { type: ["string", "null"] },
               },
