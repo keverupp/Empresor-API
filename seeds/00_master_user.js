@@ -30,7 +30,5 @@ exports.seed = async function(knex) {
     email: process.env.MASTER_USER_EMAIL || 'master@system.com',
     password: hashedPassword,
     plan_id: plan.id,
-    company_id: null,
-    is_master: true,
   });
 };
