@@ -1047,13 +1047,7 @@ class QuoteService {
 
     let discountInputValue;
     if (quote.discount_type === "percentage") {
-      const subtotal = toInt(quote.subtotal_cents, 0);
-      const discountAmount = toInt(quote.discount_value_cents, 0);
-      if (subtotal > 0 && discountAmount > 0) {
-        discountInputValue = Math.round((discountAmount / subtotal) * 100);
-      } else {
-        discountInputValue = 0;
-      }
+      discountInputValue = toInt(quote.discount_value_cents, 0);
     } else if (quote.discount_type === "fixed_amount") {
       discountInputValue = toInt(quote.discount_value_cents, 0) / 100;
     } else {
