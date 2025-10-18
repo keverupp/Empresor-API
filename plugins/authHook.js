@@ -4,7 +4,35 @@
 const fp = require("fastify-plugin");
 
 async function authHookPlugin(fastify, opts) {
+  let masterUser = null;
+
   fastify.decorate("authenticate", async function (request, reply) {
+    const masterKey = request.headers['authorization'];
+    if (masterKey && masterKey === `Bearer ${fastify.config.MASTER_KEY}`) {
+      const companyId = request.headers['x-company-id'];
+      if (!companyId) {
+        return reply.code(400).send({
+          statusCode: 400,
+          error: "BAD_REQUEST",
+          message: "Master key authentication requires a X-Company-ID header.",
+        });
+      }
+
+      if (!masterUser) {
+        masterUser = await fastify.knex('users').where({ email: fastify.config.MASTER_USER_EMAIL }).first();
+      }
+
+      if (masterUser) {
+        request.user = {
+          userId: masterUser.id,
+          email: masterUser.email,
+          companyId: parseInt(companyId, 10),
+          isMaster: true,
+        };
+        return;
+      }
+    }
+
     try {
       // Esta função é fornecida pelo plugin @fastify/jwt
       // Ela verifica o token no cabeçalho 'Authorization: Bearer <token>'

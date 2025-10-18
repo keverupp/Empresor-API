@@ -43,6 +43,8 @@ const envSchema = {
 
     /* ---------------------- AUTENTICAÇÃO ---------------------- */
     JWT_SECRET: { type: "string" },
+    MASTER_KEY: { type: "string" },
+    MASTER_USER_EMAIL: { type: "string", default: "master@system.com" },
     JWT_EXPIRES_IN: { type: "string", default: "7d" },
 
     /* ---------------------- EMAIL ---------------------- */
