@@ -30,6 +30,13 @@ async function authHookPlugin(fastify, opts) {
           isMaster: true,
         };
         return;
+      } else {
+        // Master key is correct, but the master user is not in the DB
+        return reply.code(401).send({
+          statusCode: 401,
+          error: "UNAUTHORIZED",
+          message: "Master key is valid, but the master user is not configured in the database. Please run the database seeds.",
+        });
       }
     }
 
