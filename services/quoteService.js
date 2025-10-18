@@ -976,7 +976,9 @@ class QuoteService {
         "q.status",
         "q.notes",
         "q.terms_and_conditions_content",
+        "q.discount_type",
         "q.discount_value_cents",
+        "q.subtotal_cents",
         "comp.name as company_name",
         "comp.document_number as company_document",
         "comp.address_street",
@@ -1043,6 +1045,21 @@ class QuoteService {
       ? toInt(quote.discount_value_cents, 0) / 100
       : 0;
 
+    let discountInputValue;
+    if (quote.discount_type === "percentage") {
+      const subtotal = toInt(quote.subtotal_cents, 0);
+      const discountAmount = toInt(quote.discount_value_cents, 0);
+      if (subtotal > 0 && discountAmount > 0) {
+        discountInputValue = Math.round((discountAmount / subtotal) * 100);
+      } else {
+        discountInputValue = 0;
+      }
+    } else if (quote.discount_type === "fixed_amount") {
+      discountInputValue = toInt(quote.discount_value_cents, 0);
+    } else {
+      discountInputValue = 0;
+    }
+
     return {
       title: `Orçamento ${quote.quote_number}`,
       data: {
@@ -1068,6 +1085,8 @@ class QuoteService {
           },
           items: formattedItems,
           discount,
+          discount_type: quote.discount_type,
+          discount_value: discountInputValue,
           notes: quote.notes,
           terms: quote.terms_and_conditions_content,
         },
